@@ -51,8 +51,6 @@ const loopbackAlias = "aka-loopback"
 // Server is an http.Handler that proxies by Host header.
 type Server struct {
 	Table Table
-	// Port is the port the proxy listens on, used in generated links.
-	Port int
 	// TLD is the suffix used in help text on error pages.
 	TLD string
 	Log *log.Logger
@@ -62,9 +60,10 @@ type Server struct {
 
 type ctxKey struct{}
 
-// New returns a proxy handler over table.
-func New(table Table, port int) *Server {
-	s := &Server{Table: table, Port: port, TLD: brand.DefaultTLD, Log: log.Default()}
+// New returns a proxy handler over table. The same handler serves HTTP and
+// HTTPS listeners; links and forwarded headers follow the request's scheme.
+func New(table Table) *Server {
+	s := &Server{Table: table, TLD: brand.DefaultTLD, Log: log.Default()}
 	s.rp = &httputil.ReverseProxy{
 		Rewrite:        s.rewrite,
 		Transport:      newTransport(),
@@ -179,15 +178,28 @@ func (s *Server) rewrite(pr *httputil.ProxyRequest) {
 	// Keep the original Host (myapp.localhost:1355): apps build absolute
 	// URLs and check allowed hosts from it. SetURL would replace it.
 	pr.Out.Host = pr.In.Host
-	pr.SetXForwarded()
-	pr.Out.Header.Set("X-Forwarded-Port", portOf(pr.In.Host, s.Port))
+	pr.SetXForwarded() // X-Forwarded-Proto is https when pr.In.TLS is set
+	pr.Out.Header.Set("X-Forwarded-Port", requestPort(pr.In))
 }
 
-func portOf(host string, fallback int) string {
-	if _, p, err := net.SplitHostPort(host); err == nil && p != "" {
+// requestScheme is the scheme the client used to reach the proxy.
+func requestScheme(r *http.Request) string {
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
+}
+
+// requestPort is the port the client used: the one in Host, or the
+// scheme's default when Host has none.
+func requestPort(r *http.Request) string {
+	if _, p, err := net.SplitHostPort(r.Host); err == nil && p != "" {
 		return p
 	}
-	return strconv.Itoa(fallback)
+	if r.TLS != nil {
+		return "443"
+	}
+	return "80"
 }
 
 // modifyResponse rewrites redirects that point at the app's raw port
@@ -196,7 +208,7 @@ func portOf(host string, fallback int) string {
 func (s *Server) modifyResponse(resp *http.Response) error {
 	rt := routeFrom(resp.Request)
 	if loc := resp.Header.Get("Location"); loc != "" {
-		if rewritten, ok := RewriteLocation(loc, rt.Port, "http", resp.Request.Host); ok {
+		if rewritten, ok := RewriteLocation(loc, rt.Port, requestScheme(resp.Request), resp.Request.Host); ok {
 			resp.Header.Set("Location", rewritten)
 		}
 	}

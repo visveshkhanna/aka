@@ -62,13 +62,11 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	tb := &memTable{}
-	p := New(tb, 0)
+	p := New(tb)
 	p.Log = log.New(io.Discard, "", 0)
 	srv := httptest.NewServer(p)
 	t.Cleanup(srv.Close)
 	addr := strings.TrimPrefix(srv.URL, "http://")
-	_, port, _ := net.SplitHostPort(addr)
-	p.Port, _ = strconv.Atoi(port)
 	return &harness{t: t, table: tb, srv: srv, addr: addr}
 }
 
@@ -202,7 +200,7 @@ func TestNotFound(t *testing.T) {
 		t.Fatal("missing proxy header on 404")
 	}
 
-	resp = h.do("GET", "nope.localhost", "/", map[string]string{"Accept": "text/html,*/*"}, nil)
+	resp = h.do("GET", "nope.localhost:"+strconv.Itoa(h.srvPort()), "/", map[string]string{"Accept": "text/html,*/*"}, nil)
 	body := readBody(t, resp)
 	if resp.StatusCode != 404 || !strings.Contains(body, "No app at nope.localhost") {
 		t.Fatalf("html 404: %d %s", resp.StatusCode, body)

@@ -109,7 +109,7 @@ func Start(cfg Config) (*Server, error) {
 		unlock()
 		return nil, err
 	}
-	p := proxy.New(s, s.proxyPort)
+	p := proxy.New(s)
 	p.Log = s.log
 	s.httpSrv = &http.Server{Handler: p, ReadHeaderTimeout: 30 * time.Second, ErrorLog: log.New(discardWriter{}, "", 0)}
 	for _, ln := range s.proxyLns {

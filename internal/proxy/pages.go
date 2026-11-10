@@ -76,7 +76,7 @@ func (s *Server) sendError(w http.ResponseWriter, r *http.Request, status int, c
 	case pageNotFound:
 		d.Title, d.Heading = "Not found", "No app at "+host
 		d.Hint = "Start one with: " + brand.Name + " " + suggestName(host, s.TLD) + " <command>"
-		d.Routes = s.pageRoutes()
+		d.Routes = s.pageRoutes(r)
 		if len(d.Routes) > 0 {
 			d.Message += " Running apps:"
 		}
@@ -107,15 +107,19 @@ func suggestName(host, tld string) string {
 	return "myapp"
 }
 
-func (s *Server) pageRoutes() []pageRoute {
+// pageRoutes lists the routes as links on the scheme and port the request
+// came in on, so they work from whichever listener served the page.
+func (s *Server) pageRoutes(r *http.Request) []pageRoute {
+	scheme, port := requestScheme(r), requestPort(r)
+	suffix := ":" + port
+	if scheme == "http" && port == "80" || scheme == "https" && port == "443" {
+		suffix = ""
+	}
 	routes := s.Table.Routes()
 	sort.Slice(routes, func(i, j int) bool { return routes[i].Hostname < routes[j].Hostname })
 	out := make([]pageRoute, 0, len(routes))
 	for _, rt := range routes {
-		u := "http://" + rt.Hostname
-		if s.Port != 80 {
-			u += ":" + strconv.Itoa(s.Port)
-		}
+		u := scheme + "://" + rt.Hostname + suffix
 		detail := "starting"
 		if rt.Port > 0 {
 			detail = "port " + strconv.Itoa(rt.Port)
