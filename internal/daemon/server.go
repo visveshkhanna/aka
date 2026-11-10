@@ -64,10 +64,10 @@ type Server struct {
 	httpsPort  int    // dedicated HTTPS port in use, 0 if none
 	httpsErr   string // why HTTPSPort could not be used
 	privileged bool   // httpsLns were handed in and cannot be rebound
-	httpSrv   *http.Server
-	unlock    func()
-	done      chan struct{}
-	closeOnce sync.Once
+	httpSrv    *http.Server
+	unlock     func()
+	done       chan struct{}
+	closeOnce  sync.Once
 }
 
 type entry struct {

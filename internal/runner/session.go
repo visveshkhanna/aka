@@ -30,15 +30,15 @@ type session struct {
 	force    bool
 	logf     func(string, ...any)
 
-	mu        sync.Mutex
-	conn      *daemon.Conn
-	assigned  int
-	port      int
-	dialHost  string
-	closed    bool
-	child     daemon.Request // last OpChild, replayed on reconnect
-	evicted   chan int       // receives the evicting PID
-	ping      daemon.Response // from the daemon the session registered with
+	mu       sync.Mutex
+	conn     *daemon.Conn
+	assigned int
+	port     int
+	dialHost string
+	closed   bool
+	child    daemon.Request  // last OpChild, replayed on reconnect
+	evicted  chan int        // receives the evicting PID
+	ping     daemon.Response // from the daemon the session registered with
 }
 
 func newSession(start daemon.StartOptions, hostname string, pid int, command string, force bool, logf func(string, ...any)) *session {
