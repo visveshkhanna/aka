@@ -24,6 +24,9 @@ const (
 
 	// DefaultProxyPort is the unprivileged HTTP proxy port.
 	DefaultProxyPort = 1355
+	// DefaultHTTPSPort is tried for HTTPS so URLs need no port. Without the
+	// privilege to bind it, HTTPS is served on DefaultProxyPort instead.
+	DefaultHTTPSPort = 443
 
 	// ProxyHeader is set on every response the proxy generates or forwards,
 	// so health checks can tell our proxy apart from an unrelated server.

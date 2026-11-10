@@ -43,6 +43,10 @@ func Main(args []string) int {
 		return cmdList()
 	case "proxy":
 		return cmdProxy(args[1:])
+	case "trust":
+		return cmdTrust()
+	case "untrust":
+		return cmdUntrust()
 	case daemonCmd:
 		return cmdDaemon(args[1:])
 	case "run":
@@ -53,7 +57,7 @@ func Main(args []string) int {
 
 func usage(w io.Writer) {
 	n := brand.Name
-	fmt.Fprintf(w, `%[1]s gives a local dev server a stable URL: http://<name>.localhost:%[2]d
+	fmt.Fprintf(w, `%[1]s gives a local dev server a stable URL: https://<name>.localhost
 
 Usage:
   %[1]s <name> <command...>        run command, route <name>.localhost to it
@@ -61,6 +65,8 @@ Usage:
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
   %[1]s list                       show active routes
   %[1]s proxy start|stop|status    manage the proxy daemon
+  sudo %[1]s proxy start           also serve port 443 (root is dropped after binding)
+  %[1]s trust | untrust            add or remove the local CA in the system trust store
 
 Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
@@ -71,10 +77,13 @@ The command gets PORT=<free port>, HOST=127.0.0.1 and %[3]s=<public url>.
 If it ignores PORT, %[1]s routes to whatever port it actually listens on.
 
 Environment:
-  %[4]s   proxy port (default %[2]d)
+  %[4]s   proxy port for HTTP and HTTPS (default %[2]d)
+  %[8]s   dedicated HTTPS port to try (default %[9]d, 0 for none)
+  %[10]s        0 for plain HTTP only
   %[5]s    state directory (default ~/%[6]s)
   %[7]s       disable pseudo-terminal output capture
-`, n, brand.DefaultProxyPort, brand.Env("URL"), brand.Env("PROXY_PORT"), brand.Env("STATE_DIR"), brand.StateDirName, brand.Env("NO_PTY"))
+`, n, brand.DefaultProxyPort, brand.Env("URL"), brand.Env("PROXY_PORT"), brand.Env("STATE_DIR"), brand.StateDirName, brand.Env("NO_PTY"),
+		brand.Env("HTTPS_PORT"), brand.DefaultHTTPSPort, brand.Env("HTTPS"))
 }
 
 func proxyPort() (int, error) {
@@ -94,11 +103,23 @@ func startOptions() (daemon.StartOptions, error) {
 	if err != nil {
 		return daemon.StartOptions{}, err
 	}
+	hport, err := httpsPort()
+	if err != nil {
+		return daemon.StartOptions{}, err
+	}
+	args := []string{daemonCmd, "--port", strconv.Itoa(port)}
+	tls := httpsEnabled()
+	if tls {
+		args = append(args, "--https-port", strconv.Itoa(hport))
+	} else {
+		args = append(args, "--no-tls")
+	}
 	return daemon.StartOptions{
 		StateDir:  brand.StateDir(),
 		ProxyPort: port,
-		Args:      []string{daemonCmd, "--port", strconv.Itoa(port)},
-		Warn:      func(s string) { fmt.Fprintf(os.Stderr, "[%s] %s\n", brand.Name, s) },
+		TLS:       tls,
+		Args:      args,
+		Warn:      func(s string) { notice("%s", s) },
 	}, nil
 }
 
@@ -128,6 +149,9 @@ func cmdRun(args []string) int {
 	so, err := startOptions()
 	if err != nil {
 		return fail(err)
+	}
+	if so.TLS {
+		ensureTrust(so.StateDir)
 	}
 	code, err := runner.Run(runner.Options{
 		Hostname: Hostname(name),
@@ -186,15 +210,10 @@ func cmdProxy(args []string) int {
 	dir := brand.StateDir()
 	switch sub {
 	case "start":
-		so, err := startOptions()
-		if err != nil {
-			return fail(err)
+		if os.Geteuid() == 0 {
+			return startPrivileged()
 		}
-		r, err := daemon.Ensure(so)
-		if err != nil {
-			return fail(err)
-		}
-		fmt.Printf("Proxy running on port %d (pid %d).\n", r.ProxyPort, r.PID)
+		return startProxy(nil)
 	case "stop":
 		if _, err := daemon.Ping(dir); err != nil {
 			fmt.Println("Proxy is not running.")
@@ -211,7 +230,11 @@ func cmdProxy(args []string) int {
 			return 1
 		}
 		list, _ := daemon.Do(dir, daemon.Request{Op: daemon.OpList})
-		fmt.Printf("Proxy running on port %d (pid %d), %d route(s).\nLog: %s\n", r.ProxyPort, r.PID, len(list.Routes), daemon.LogPath(dir))
+		fmt.Println(describeProxy(r))
+		if note := daemon.HTTPSNote(r); note != "" {
+			fmt.Println(note)
+		}
+		fmt.Printf("%d route(s). Log: %s\n", len(list.Routes), daemon.LogPath(dir))
 		if r.BuildID != daemon.BuildID() {
 			fmt.Println("Note: the daemon is running a different build of " + brand.Name + "; restart it with `" + brand.Name + " proxy stop`.")
 		}
@@ -223,23 +246,48 @@ func cmdProxy(args []string) int {
 
 // cmdDaemon runs the daemon in the foreground. The CLI starts it detached.
 func cmdDaemon(args []string) int {
+	// The daemon reads its whole configuration from args; see startOptions.
 	port, err := proxyPort()
 	if err != nil {
 		return fail(err)
 	}
+	cfg := daemon.Config{
+		StateDir:  brand.StateDir(),
+		ProxyPort: port,
+		TLS:       true,
+		Log:       log.New(os.Stderr, "", log.LstdFlags),
+	}
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--port" && i+1 < len(args) {
-			if port, err = strconv.Atoi(args[i+1]); err != nil {
+		a := args[i]
+		val := ""
+		if i+1 < len(args) {
+			val = args[i+1]
+		}
+		switch a {
+		case "--port", "--https-port":
+			n, err := strconv.Atoi(val)
+			if err != nil {
+				return fail(fmt.Errorf("%s: %w", a, err))
+			}
+			if a == "--port" {
+				cfg.ProxyPort = n
+			} else {
+				cfg.HTTPSPort = n
+			}
+			i++
+		case "--no-tls":
+			cfg.TLS = false
+		case "--https-fds":
+			lns, err := inheritedListeners(val)
+			if err != nil {
 				return fail(err)
 			}
+			cfg.HTTPSListeners = lns
 			i++
 		}
 	}
-	s, err := daemon.Start(daemon.Config{
-		StateDir:  brand.StateDir(),
-		ProxyPort: port,
-		Log:       log.New(os.Stderr, "", log.LstdFlags),
-	})
+	port = cfg.ProxyPort
+	s, err := daemon.Start(cfg)
 	if errors.Is(err, daemon.ErrAlreadyRunning) {
 		fmt.Fprintln(os.Stderr, "daemon already running")
 		return 0
@@ -259,4 +307,24 @@ func cmdDaemon(args []string) int {
 	case <-s.Done():
 	}
 	return 0
+}
+
+// inheritedListeners turns "3,4" into listeners on those file descriptors,
+// passed by `sudo aka proxy start` after binding them as root.
+func inheritedListeners(fds string) ([]net.Listener, error) {
+	var lns []net.Listener
+	for _, f := range strings.Split(fds, ",") {
+		fd, err := strconv.Atoi(f)
+		if err != nil || fd < 3 {
+			return nil, fmt.Errorf("--https-fds: invalid fd %q", f)
+		}
+		file := os.NewFile(uintptr(fd), "https-listener")
+		ln, err := net.FileListener(file)
+		file.Close() // FileListener duplicated it
+		if err != nil {
+			return nil, fmt.Errorf("--https-fds: fd %d: %w", fd, err)
+		}
+		lns = append(lns, ln)
+	}
+	return lns, nil
 }
