@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"aka/internal/lockfile"
 	"aka/internal/ports"
 	"aka/internal/proxy"
 )
@@ -95,7 +96,10 @@ func Start(cfg Config) (*Server, error) {
 	if err := os.MkdirAll(cfg.StateDir, 0o700); err != nil {
 		return nil, err
 	}
-	unlock, err := lockFile(LockPath(cfg.StateDir))
+	unlock, err := lockfile.TryLock(LockPath(cfg.StateDir))
+	if errors.Is(err, lockfile.ErrLocked) {
+		return nil, ErrAlreadyRunning
+	}
 	if err != nil {
 		return nil, err
 	}
