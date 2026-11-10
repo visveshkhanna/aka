@@ -1,0 +1,378 @@
+package daemon
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"sort"
+	"strconv"
+	"sync"
+	"time"
+
+	"aka/internal/ports"
+	"aka/internal/proxy"
+)
+
+// Config configures a daemon.
+type Config struct {
+	StateDir  string
+	ProxyPort int // 0 picks a random port (tests)
+	// ProxyHosts are the addresses the proxy binds. Default: 127.0.0.1 and
+	// ::1, because *.localhost resolves to both and browsers try either.
+	ProxyHosts []string
+	MinPort    int
+	MaxPort    int
+	Log        *log.Logger
+}
+
+// Server is a running daemon.
+type Server struct {
+	cfg Config
+	log *log.Logger
+
+	mu     sync.Mutex
+	routes map[string]*entry
+
+	proxyLns  []net.Listener
+	ctlLn     net.Listener
+	proxyPort int
+	httpSrv   *http.Server
+	unlock    func()
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+type entry struct {
+	route proxy.Route
+	// assigned is the PORT handed to the child; reserved until the session
+	// ends so concurrent runs never get the same port.
+	assigned int
+	sess     *session
+	child    childInfo
+}
+
+type childInfo struct {
+	pid   int
+	start uint64
+	pgid  int
+}
+
+type session struct {
+	conn net.Conn
+	wmu  sync.Mutex
+	enc  *json.Encoder
+	host string // hostname owned by this session ("" until registered)
+}
+
+func (s *session) send(r Response) error {
+	s.wmu.Lock()
+	defer s.wmu.Unlock()
+	s.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	return s.enc.Encode(r)
+}
+
+// ErrAlreadyRunning is returned by Start when another daemon holds the lock.
+var ErrAlreadyRunning = errors.New("daemon already running")
+
+// Start acquires the daemon lock, binds the control socket and proxy ports,
+// and starts serving. It returns once everything is listening.
+func Start(cfg Config) (*Server, error) {
+	if cfg.Log == nil {
+		cfg.Log = log.New(os.Stderr, "", log.LstdFlags)
+	}
+	if cfg.MinPort == 0 {
+		cfg.MinPort, cfg.MaxPort = ports.MinAppPort, ports.MaxAppPort
+	}
+	if len(cfg.ProxyHosts) == 0 {
+		cfg.ProxyHosts = []string{"127.0.0.1", "::1"}
+	}
+	if err := os.MkdirAll(cfg.StateDir, 0o700); err != nil {
+		return nil, err
+	}
+	unlock, err := lockFile(LockPath(cfg.StateDir))
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{cfg: cfg, log: cfg.Log, routes: map[string]*entry{}, unlock: unlock, done: make(chan struct{})}
+	if err := s.listen(); err != nil {
+		s.closeListeners()
+		unlock()
+		return nil, err
+	}
+	p := proxy.New(s, s.proxyPort)
+	p.Log = s.log
+	s.httpSrv = &http.Server{Handler: p, ReadHeaderTimeout: 30 * time.Second, ErrorLog: log.New(discardWriter{}, "", 0)}
+	for _, ln := range s.proxyLns {
+		go s.httpSrv.Serve(ln)
+	}
+	go s.acceptControl()
+	s.log.Printf("daemon pid %d: proxy on port %d, control socket %s", os.Getpid(), s.proxyPort, SocketPath(cfg.StateDir))
+	return s, nil
+}
+
+type discardWriter struct{}
+
+func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+func (s *Server) listen() error {
+	port := s.cfg.ProxyPort
+	for i, h := range s.cfg.ProxyHosts {
+		ln, err := net.Listen("tcp", net.JoinHostPort(h, strconv.Itoa(port)))
+		if err != nil {
+			if i > 0 && isAddrNotAvail(err) {
+				continue // no IPv6 loopback on this host
+			}
+			return fmt.Errorf("proxy cannot listen on %s port %d: %w", h, port, err)
+		}
+		if port == 0 {
+			port = ln.Addr().(*net.TCPAddr).Port
+		}
+		s.proxyLns = append(s.proxyLns, ln)
+	}
+	s.proxyPort = port
+
+	sock := SocketPath(s.cfg.StateDir)
+	// We hold the lock, so any socket file left here is from a dead daemon.
+	os.Remove(sock)
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		return fmt.Errorf("control socket: %w", err)
+	}
+	os.Chmod(sock, 0o600)
+	s.ctlLn = ln
+	return nil
+}
+
+// ProxyPort returns the port the proxy is listening on.
+func (s *Server) ProxyPort() int { return s.proxyPort }
+
+// Done is closed when the daemon has shut down.
+func (s *Server) Done() <-chan struct{} { return s.done }
+
+// Close stops the daemon: listeners, sessions and the lock.
+func (s *Server) Close() {
+	s.closeOnce.Do(func() {
+		s.closeListeners()
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		s.httpSrv.Shutdown(ctx)
+		cancel()
+		s.mu.Lock()
+		for _, e := range s.routes {
+			if e.sess != nil {
+				e.sess.conn.Close()
+			}
+		}
+		s.mu.Unlock()
+		os.Remove(SocketPath(s.cfg.StateDir))
+		s.unlock()
+		close(s.done)
+	})
+}
+
+func (s *Server) closeListeners() {
+	for _, ln := range s.proxyLns {
+		ln.Close()
+	}
+	if s.ctlLn != nil {
+		s.ctlLn.Close()
+	}
+}
+
+// Lookup implements proxy.Table.
+func (s *Server) Lookup(host string) (proxy.Route, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.routes[host]
+	if !ok {
+		return proxy.Route{}, false
+	}
+	return e.route, true
+}
+
+// Routes implements proxy.Table.
+func (s *Server) Routes() []proxy.Route {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]proxy.Route, 0, len(s.routes))
+	for _, e := range s.routes {
+		out = append(out, e.route)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Hostname < out[j].Hostname })
+	return out
+}
+
+func (s *Server) acceptControl() {
+	for {
+		c, err := s.ctlLn.Accept()
+		if err != nil {
+			return
+		}
+		go s.serveConn(c)
+	}
+}
+
+func (s *Server) serveConn(c net.Conn) {
+	sess := &session{conn: c, enc: json.NewEncoder(c)}
+	defer func() {
+		c.Close()
+		s.endSession(sess)
+	}()
+	sc := bufio.NewScanner(c)
+	sc.Buffer(make([]byte, 64<<10), 1<<20)
+	for sc.Scan() {
+		var req Request
+		if err := json.Unmarshal(sc.Bytes(), &req); err != nil {
+			sess.send(Response{Error: "bad request: " + err.Error(), Code: CodeInvalid})
+			return
+		}
+		resp, keep := s.handle(sess, req)
+		if err := sess.send(resp); err != nil || !keep {
+			return
+		}
+	}
+}
+
+// handle processes one request. keep=false closes the connection afterwards.
+func (s *Server) handle(sess *session, req Request) (Response, bool) {
+	s.mu.Lock()
+	inSession := sess.host != ""
+	s.mu.Unlock()
+	switch req.Op {
+	case OpPing:
+		return Response{OK: true, PID: os.Getpid(), ProxyPort: s.proxyPort, BuildID: BuildID()}, inSession
+	case OpList:
+		return Response{OK: true, Routes: s.Routes()}, inSession
+	case OpRegister:
+		return s.register(sess, req)
+	case OpUpdate:
+		return s.update(sess, req), true
+	case OpChild:
+		return s.setChild(sess, req), true
+	case OpShutdown:
+		go func() {
+			time.Sleep(50 * time.Millisecond) // let the response flush
+			s.log.Printf("shutdown requested")
+			s.Close()
+		}()
+		return Response{OK: true}, false
+	}
+	return Response{Error: "unknown op " + strconv.Quote(req.Op), Code: CodeInvalid}, inSession
+}
+
+func (s *Server) register(sess *session, req Request) (Response, bool) {
+	if req.Hostname == "" {
+		return Response{Error: "hostname required", Code: CodeInvalid}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess.host != "" {
+		return Response{Error: "session already registered " + sess.host, Code: CodeInvalid}, true
+	}
+	if old, ok := s.routes[req.Hostname]; ok {
+		if !req.Force {
+			return Response{
+				Error:    fmt.Sprintf("%s is already in use by %s (pid %d)", req.Hostname, old.route.Command, old.route.PID),
+				Code:     CodeConflict,
+				OwnerPID: old.route.PID,
+			}, false
+		}
+		if old.sess != nil {
+			old.sess.host = "" // its disconnect must not remove our route
+			go func(o *session) {
+				o.send(Response{Event: EventEvicted, OwnerPID: req.PID})
+				o.conn.Close()
+			}(old.sess)
+		}
+		delete(s.routes, req.Hostname)
+		s.log.Printf("%s taken over by pid %d (--force)", req.Hostname, req.PID)
+	}
+	assigned, err := s.pickPortLocked(req.PreferPort)
+	if err != nil {
+		return Response{Error: err.Error()}, false
+	}
+	s.routes[req.Hostname] = &entry{
+		route:    proxy.Route{Hostname: req.Hostname, PID: req.PID, Command: req.Command, Since: time.Now()},
+		assigned: assigned,
+		sess:     sess,
+	}
+	sess.host = req.Hostname
+	s.log.Printf("registered %s (pid %d, PORT=%d): %s", req.Hostname, req.PID, assigned, req.Command)
+	return Response{OK: true, Assigned: assigned}, true
+}
+
+func (s *Server) pickPortLocked(prefer int) (int, error) {
+	reserved := map[int]bool{}
+	for _, e := range s.routes {
+		reserved[e.assigned] = true
+		reserved[e.route.Port] = true
+	}
+	reserved[s.proxyPort] = true
+	if prefer > 0 && !reserved[prefer] && !ports.Blocked[prefer] {
+		// The previous child may still be bound to it (daemon restart while
+		// the app runs), so do not require it to be free.
+		return prefer, nil
+	}
+	return ports.Pick(s.cfg.MinPort, s.cfg.MaxPort, func(p int) bool { return reserved[p] })
+}
+
+func (s *Server) update(sess *session, req Request) Response {
+	if req.Port < 0 || req.Port > 65535 {
+		return Response{Error: "invalid port", Code: CodeInvalid}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess.host == "" {
+		return Response{Error: "not registered (route was taken over or removed)", Code: CodeConflict}
+	}
+	e, ok := s.routes[sess.host]
+	if !ok || e.sess != sess {
+		return Response{Error: "route no longer owned by this session", Code: CodeConflict}
+	}
+	if e.route.Port != req.Port || e.route.DialHost != req.DialHost {
+		s.log.Printf("%s -> %s", sess.host, net.JoinHostPort(orStar(req.DialHost), strconv.Itoa(req.Port)))
+	}
+	e.route.Port, e.route.DialHost = req.Port, req.DialHost
+	return Response{OK: true}
+}
+
+func orStar(h string) string {
+	if h == "" {
+		return "*"
+	}
+	return h
+}
+
+func (s *Server) setChild(sess *session, req Request) Response {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.routes[sess.host]
+	if sess.host == "" || !ok || e.sess != sess {
+		return Response{Error: "not registered", Code: CodeInvalid}
+	}
+	e.child = childInfo{pid: req.ChildPID, start: req.ChildStart, pgid: req.ChildPGID}
+	return Response{OK: true}
+}
+
+func (s *Server) endSession(sess *session) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess.host == "" {
+		return
+	}
+	if e, ok := s.routes[sess.host]; ok && e.sess == sess {
+		delete(s.routes, sess.host)
+		s.log.Printf("removed %s", sess.host)
+		if e.child.pid > 0 {
+			// After a clean exit the child is already gone and this is a
+			// no-op; the start time guards against PID reuse.
+			go killOrphans(s.log, sess.host, e.child)
+		}
+	}
+	sess.host = ""
+}
