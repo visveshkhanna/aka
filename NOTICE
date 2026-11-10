@@ -1,0 +1,28 @@
+aka
+===
+
+This project is a Go rewrite inspired by portless
+(https://github.com/vercel-labs/portless), Copyright Vercel Labs, licensed
+under the Apache License, Version 2.0. A copy of that license is in
+third_party/portless/LICENSE.
+
+The following parts are translated from, or closely follow, portless's
+TypeScript sources (packages/portless/src):
+
+  - internal/ports: the app port range (4000-4999), random-then-sequential
+    free port search, the per-address bind probe (127.0.0.1, ::1, 0.0.0.0,
+    ::), and the browser "bad ports" skip list (from cli-utils.ts
+    findFreePort / BLOCKED_PORTS).
+  - internal/proxy: Host-header routing, the hop-count loop detection header
+    and its threshold of 5, HTML-or-JSON error responses chosen by Accept,
+    the X-Forwarded-* headers, and rewriting upstream redirects back to the
+    public origin (from proxy.ts, including rewriteUpstreamLocation).
+  - internal/runner: the child environment (PORT, HOST=127.0.0.1, a
+    <TOOL>_URL variable), prepending node_modules/.bin to PATH, running the
+    child in its own session and forwarding signals to its process group
+    (from cli.ts and cli-utils.ts spawnCommand / killTree).
+  - Test cases in internal/proxy and internal/detect port edge cases from
+    proxy.test.ts and cli-utils.test.ts.
+
+Listener detection, stdout URL scanning, the daemon protocol and the
+connection-scoped route ownership are new in this project.
