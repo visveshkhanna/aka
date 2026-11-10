@@ -67,7 +67,7 @@ func TestSubstitutePort(t *testing.T) {
 
 func TestBuildEnv(t *testing.T) {
 	base := []string{"HOME=/h", "PORT=9999", "HOST=myhost", "PATH=/old", "KEEP=1"}
-	env := BuildEnv(base, 4123, "http://a.localhost:1355", "/new:/old", true)
+	env := BuildEnv(base, 4123, "http://a.localhost:1355", "/new:/old", "", true)
 	m := map[string]string{}
 	for _, kv := range env {
 		k, v, _ := strings.Cut(kv, "=")
@@ -84,12 +84,26 @@ func TestBuildEnv(t *testing.T) {
 		t.Fatalf("env:\n got %v\nwant %v", m, want)
 	}
 	// A user-set PYTHONUNBUFFERED is respected, and a pty run adds none.
-	env = BuildEnv([]string{"PYTHONUNBUFFERED=0"}, 1, "u", "p", true)
+	env = BuildEnv([]string{"PYTHONUNBUFFERED=0"}, 1, "u", "p", "", true)
 	if strings.Count(strings.Join(env, "\n"), "PYTHONUNBUFFERED") != 1 {
 		t.Fatalf("user PYTHONUNBUFFERED overridden: %v", env)
 	}
-	if strings.Contains(strings.Join(BuildEnv(nil, 1, "u", "p", false), "\n"), "PYTHONUNBUFFERED") {
+	if strings.Contains(strings.Join(BuildEnv(nil, 1, "u", "p", "", false), "\n"), "PYTHONUNBUFFERED") {
 		t.Fatal("PYTHONUNBUFFERED set for pty output")
+	}
+}
+
+func TestBuildEnvNodeCA(t *testing.T) {
+	env := strings.Join(BuildEnv(nil, 1, "u", "p", "/s/ca.pem", false), "\n")
+	if !strings.Contains(env, "NODE_EXTRA_CA_CERTS=/s/ca.pem") {
+		t.Fatalf("NODE_EXTRA_CA_CERTS not set: %s", env)
+	}
+	env = strings.Join(BuildEnv([]string{"NODE_EXTRA_CA_CERTS=/mine.pem"}, 1, "u", "p", "/s/ca.pem", false), "\n")
+	if strings.Count(env, "NODE_EXTRA_CA_CERTS") != 1 || !strings.Contains(env, "=/mine.pem") {
+		t.Fatalf("user NODE_EXTRA_CA_CERTS overridden: %s", env)
+	}
+	if strings.Contains(strings.Join(BuildEnv(nil, 1, "u", "p", "", false), "\n"), "NODE_EXTRA_CA_CERTS") {
+		t.Fatal("NODE_EXTRA_CA_CERTS set without TLS")
 	}
 }
 
@@ -117,15 +131,6 @@ func TestAugmentPathAndLookPath(t *testing.T) {
 	}
 	if AugmentPath("/usr/bin", t.TempDir()) != "/usr/bin" {
 		t.Fatal("PATH changed with no node_modules")
-	}
-}
-
-func TestPublicURL(t *testing.T) {
-	if u := PublicURL("a.localhost", 1355); u != "http://a.localhost:1355" {
-		t.Fatal(u)
-	}
-	if u := PublicURL("a.localhost", 80); u != "http://a.localhost" {
-		t.Fatal(u)
 	}
 }
 

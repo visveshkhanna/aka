@@ -170,3 +170,34 @@ func freePort(t *testing.T) int {
 	defer ln.Close()
 	return ln.Addr().(*net.TCPAddr).Port
 }
+
+func TestResponseURL(t *testing.T) {
+	for _, tc := range []struct {
+		r    Response
+		want string
+	}{
+		{Response{ProxyPort: 1355}, "http://a.localhost:1355"},
+		{Response{ProxyPort: 80}, "http://a.localhost"},
+		{Response{ProxyPort: 1355, TLS: true}, "https://a.localhost:1355"},
+		{Response{ProxyPort: 1355, TLS: true, HTTPSPort: 443}, "https://a.localhost"},
+		{Response{ProxyPort: 1355, TLS: true, HTTPSPort: 8443}, "https://a.localhost:8443"},
+	} {
+		if got := tc.r.URL("a.localhost"); got != tc.want {
+			t.Errorf("%+v: got %s, want %s", tc.r, got, tc.want)
+		}
+	}
+}
+
+func TestHTTPSNote(t *testing.T) {
+	if n := HTTPSNote(Response{TLS: true, HTTPSPort: 443}); n != "" {
+		t.Errorf("note with 443 bound: %q", n)
+	}
+	n := HTTPSNote(Response{TLS: true, ProxyPort: 1355, HTTPSError: "binding port 443 needs privileges"})
+	if !strings.Contains(n, "port 1355") || !strings.Contains(n, "sudo aka proxy start") {
+		t.Errorf("privileges note: %q", n)
+	}
+	n = HTTPSNote(Response{TLS: true, ProxyPort: 1355, HTTPSError: "port 443 is in use by another program"})
+	if !strings.Contains(n, "in use") || strings.Contains(n, "sudo") {
+		t.Errorf("in-use note: %q", n)
+	}
+}

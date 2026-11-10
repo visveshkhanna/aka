@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"aka/internal/brand"
+	"aka/internal/certs"
 	"aka/internal/daemon"
 	"aka/internal/detect"
 )
@@ -75,8 +76,15 @@ func Run(o Options) (int, error) {
 		return 1, err
 	}
 	defer sess.close()
-	assigned, proxyPort := sess.info()
-	url := PublicURL(o.Hostname, proxyPort)
+	assigned, ping := sess.info()
+	url := ping.URL(o.Hostname)
+	if note := daemon.HTTPSNote(ping); note != "" && ping.Started {
+		logf("%s", note)
+	}
+	caFile := ""
+	if ping.TLS {
+		caFile = certs.CertPath(o.Daemon.StateDir)
+	}
 
 	args := SubstitutePort(o.Args, assigned)
 	cwd, _ := os.Getwd()
@@ -95,7 +103,7 @@ func Run(o Options) (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	cmd.Env = BuildEnv(os.Environ(), assigned, url, path, out.piped)
+	cmd.Env = BuildEnv(os.Environ(), assigned, url, path, caFile, out.piped)
 
 	logf("%s -> %s (PORT=%d)", url, display, assigned)
 	sigs := notifySignals() // before Start; see notifySignals
@@ -176,14 +184,6 @@ func exitCode(err error) int {
 	return 1
 }
 
-// PublicURL is the URL users open for hostname.
-func PublicURL(hostname string, proxyPort int) string {
-	if proxyPort == 80 {
-		return "http://" + hostname
-	}
-	return "http://" + hostname + ":" + strconv.Itoa(proxyPort)
-}
-
 // SubstitutePort replaces every "{port}" in args with port.
 func SubstitutePort(args []string, port int) []string {
 	out := make([]string, len(args))
@@ -197,7 +197,12 @@ func SubstitutePort(args []string, port int) []string {
 // BuildEnv returns the child's environment: the parent's, with PORT, HOST,
 // AKA_URL and PATH set. When output is piped (not a terminal) Python is told
 // not to buffer stdout, so its startup URL reaches the scanner promptly.
-func BuildEnv(base []string, port int, url, path string, piped bool) []string {
+//
+// caFile, if set, is the local CA certificate. Node does not use the OS
+// trust store, so NODE_EXTRA_CA_CERTS points it there, letting server-side
+// code fetch other apps' https://*.localhost URLs. A value the user already
+// set is kept.
+func BuildEnv(base []string, port int, url, path, caFile string, piped bool) []string {
 	set := map[string]string{
 		"PORT":            strconv.Itoa(port),
 		"HOST":            "127.0.0.1",
@@ -206,14 +211,17 @@ func BuildEnv(base []string, port int, url, path string, piped bool) []string {
 		"PATH":            path,
 	}
 	out := make([]string, 0, len(base)+len(set)+1)
-	hasUnbuffered := false
+	hasUnbuffered, hasNodeCA := false, false
 	for _, kv := range base {
 		k, _, _ := strings.Cut(kv, "=")
 		if _, override := set[k]; override {
 			continue
 		}
-		if k == "PYTHONUNBUFFERED" {
+		switch k {
+		case "PYTHONUNBUFFERED":
 			hasUnbuffered = true
+		case "NODE_EXTRA_CA_CERTS":
+			hasNodeCA = true
 		}
 		out = append(out, kv)
 	}
@@ -222,6 +230,9 @@ func BuildEnv(base []string, port int, url, path string, piped bool) []string {
 	}
 	if piped && !hasUnbuffered {
 		out = append(out, "PYTHONUNBUFFERED=1")
+	}
+	if caFile != "" && !hasNodeCA {
+		out = append(out, "NODE_EXTRA_CA_CERTS="+caFile)
 	}
 	return out
 }

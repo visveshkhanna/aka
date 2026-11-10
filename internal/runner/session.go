@@ -38,7 +38,7 @@ type session struct {
 	closed    bool
 	child     daemon.Request // last OpChild, replayed on reconnect
 	evicted   chan int       // receives the evicting PID
-	proxyPort int
+	ping      daemon.Response // from the daemon the session registered with
 }
 
 func newSession(start daemon.StartOptions, hostname string, pid int, command string, force bool, logf func(string, ...any)) *session {
@@ -72,7 +72,7 @@ func (s *session) open(prefer int, force bool) error {
 		return errors.New(r.Error)
 	}
 	s.mu.Lock()
-	s.conn, s.assigned, s.proxyPort = c, r.Assigned, ping.ProxyPort
+	s.conn, s.assigned, s.ping = c, r.Assigned, ping
 	s.mu.Unlock()
 	go s.read(c)
 	return nil
@@ -190,10 +190,11 @@ func (s *session) close() {
 	}
 }
 
-func (s *session) info() (assigned, proxyPort int) {
+// info returns the assigned port and the daemon's ping from the first open.
+func (s *session) info() (assigned int, ping daemon.Response) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.assigned, s.proxyPort
+	return s.assigned, s.ping
 }
 
 func conflictHelp(e *ConflictError, tool string) string {

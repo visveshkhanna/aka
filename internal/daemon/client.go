@@ -169,6 +169,7 @@ func start(o StartOptions) (Response, error) {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		if r, err := Ping(o.StateDir); err == nil {
+			r.Started = true
 			return r, nil
 		}
 		select {

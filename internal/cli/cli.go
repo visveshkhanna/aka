@@ -149,11 +149,11 @@ func cmdList() int {
 		return 0
 	}
 	ping, _ := daemon.Ping(brand.StateDir())
-	printRoutes(os.Stdout, resp.Routes, ping.ProxyPort)
+	printRoutes(os.Stdout, resp.Routes, ping)
 	return 0
 }
 
-func printRoutes(w io.Writer, routes []proxy.Route, proxyPort int) {
+func printRoutes(w io.Writer, routes []proxy.Route, ping daemon.Response) {
 	if len(routes) == 0 {
 		fmt.Fprintln(w, "No routes.")
 		return
@@ -173,7 +173,7 @@ func printRoutes(w io.Writer, routes []proxy.Route, proxyPort int) {
 		if !r.Since.IsZero() {
 			up = time.Since(r.Since).Round(time.Second).String()
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", runner.PublicURL(r.Hostname, proxyPort), target, r.PID, up, r.Command)
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", ping.URL(r.Hostname), target, r.PID, up, r.Command)
 	}
 	tw.Flush()
 }

@@ -13,8 +13,11 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 
+	"aka/internal/brand"
 	"aka/internal/proxy"
 )
 
@@ -88,6 +91,55 @@ type Response struct {
 	// launcher. A restarted daemon would lose them, so it is not restarted
 	// automatically.
 	Privileged bool `json:"privileged,omitempty"`
+
+	// Started is set by Ensure when that call started the daemon. It is
+	// not part of the protocol.
+	Started bool `json:"-"`
+}
+
+// URL is the address users open for hostname on this daemon: HTTPS on the
+// dedicated port when there is one, else on the proxy port.
+func (r Response) URL(hostname string) string {
+	switch {
+	case r.TLS && r.HTTPSPort > 0:
+		return withPort("https", hostname, r.HTTPSPort, 443)
+	case r.TLS:
+		return withPort("https", hostname, r.ProxyPort, 443)
+	default:
+		return withPort("http", hostname, r.ProxyPort, 80)
+	}
+}
+
+func withPort(scheme, host string, port, defaultPort int) string {
+	if port == defaultPort {
+		return scheme + "://" + host
+	}
+	return scheme + "://" + host + ":" + strconv.Itoa(port)
+}
+
+// HTTPSNote explains why URLs carry a port when the daemon could not bind
+// its dedicated HTTPS port, and how to fix that. It is "" otherwise.
+func HTTPSNote(r Response) string {
+	switch {
+	case !r.TLS || r.HTTPSError == "":
+		return ""
+	case strings.Contains(r.HTTPSError, "privileges"):
+		fix := "run `sudo " + brand.Name + " proxy start` (it gives up root right after binding the port)"
+		if runtime.GOOS == "linux" {
+			fix += ", or let the binary bind it: sudo setcap cap_net_bind_service=+ep " + executable()
+		}
+		return "HTTPS is on port " + strconv.Itoa(r.ProxyPort) + " because " + r.HTTPSError + ". For URLs without a port, stop the proxy and " + fix + "."
+	default:
+		return "HTTPS is on port " + strconv.Itoa(r.ProxyPort) + " because " + r.HTTPSError + "."
+	}
+}
+
+func executable() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return "$(command -v " + brand.Name + ")"
+	}
+	return exe
 }
 
 // maxSocketPath is below the smallest sun_path limit (104 bytes on macOS).
