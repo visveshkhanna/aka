@@ -85,30 +85,57 @@ type StartOptions struct {
 	Args []string
 	// Env is appended to the daemon's environment.
 	Env []string
+	// ExtraFiles are passed to the daemon as fds 3, 4, ... (pre-bound
+	// listeners from a privileged launcher).
+	ExtraFiles []*os.File
+	// TLS is the HTTPS mode wanted. A running daemon in the other mode is
+	// restarted if idle.
+	TLS bool
 	// Warn receives non-fatal notices (e.g. a stale daemon build).
 	Warn func(string)
 }
 
 // Ensure returns a ping from a running daemon, starting one if needed. When
-// the running daemon is a different build and has no routes, it is restarted
-// so the new code takes effect.
+// the running daemon is a different build or HTTPS mode and has no routes,
+// it is restarted so the new code or setting takes effect. A daemon holding
+// privileged listeners is never restarted automatically, since the new one
+// could not bind them again.
 func Ensure(o StartOptions) (Response, error) {
-	if r, err := Ping(o.StateDir); err == nil {
-		if r.BuildID == BuildID() {
-			return r, nil
-		}
-		list, lerr := Do(o.StateDir, Request{Op: OpList})
-		if lerr == nil && len(list.Routes) == 0 {
-			if err := Stop(o.StateDir, 3*time.Second); err == nil {
-				return start(o)
-			}
-		}
-		if o.Warn != nil {
-			o.Warn("the running proxy daemon is an older build; run `" + brand.Name + " proxy stop` when its apps are done to upgrade it")
-		}
+	r, err := Ping(o.StateDir)
+	if err != nil {
+		return start(o)
+	}
+	var why string
+	switch {
+	case r.BuildID != BuildID():
+		why = "is an older build"
+	case r.TLS != o.TLS:
+		why = "has HTTPS " + onOff(r.TLS) + " but " + brand.Env("HTTPS") + " asks for it " + onOff(o.TLS)
+	default:
 		return r, nil
 	}
-	return start(o)
+	if !r.Privileged && Idle(o.StateDir) {
+		if err := Stop(o.StateDir, 3*time.Second); err == nil {
+			return start(o)
+		}
+	}
+	if o.Warn != nil {
+		o.Warn("the running proxy daemon " + why + "; run `" + brand.Name + " proxy stop` when its apps are done to restart it")
+	}
+	return r, nil
+}
+
+// Idle reports whether the daemon has no routes.
+func Idle(stateDir string) bool {
+	list, err := Do(stateDir, Request{Op: OpList})
+	return err == nil && len(list.Routes) == 0
+}
+
+func onOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
 }
 
 func start(o StartOptions) (Response, error) {
@@ -130,6 +157,7 @@ func start(o StartOptions) (Response, error) {
 	cmd := exec.Command(exe, o.Args...)
 	cmd.Env = append(os.Environ(), o.Env...)
 	cmd.Stdout, cmd.Stderr = logf, logf
+	cmd.ExtraFiles = o.ExtraFiles
 	cmd.Dir = "/"
 	detach(cmd)
 	if err := cmd.Start(); err != nil {

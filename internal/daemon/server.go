@@ -3,6 +3,7 @@ package daemon
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,8 +14,10 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
+	"aka/internal/certs"
 	"aka/internal/lockfile"
 	"aka/internal/ports"
 	"aka/internal/proxy"
@@ -30,6 +33,18 @@ type Config struct {
 	MinPort    int
 	MaxPort    int
 	Log        *log.Logger
+
+	// TLS enables HTTPS: the proxy port then accepts both HTTP and HTTPS,
+	// with certificates from the local CA in StateDir.
+	TLS bool
+	// HTTPSPort is a dedicated HTTPS port to try as well (443), so URLs need
+	// no port. If it cannot be bound, the daemon runs without it and reports
+	// why. 0 means none.
+	HTTPSPort int
+	// HTTPSListeners are already-bound HTTPS listeners, used instead of
+	// binding HTTPSPort. A launcher running as root binds 443 and passes
+	// them in after dropping privileges.
+	HTTPSListeners []net.Listener
 }
 
 // Server is a running daemon.
@@ -43,6 +58,12 @@ type Server struct {
 	proxyLns  []net.Listener
 	ctlLn     net.Listener
 	proxyPort int
+
+	tlsConfig  *tls.Config // nil when TLS is off
+	httpsLns   []net.Listener
+	httpsPort  int    // dedicated HTTPS port in use, 0 if none
+	httpsErr   string // why HTTPSPort could not be used
+	privileged bool   // httpsLns were handed in and cannot be rebound
 	httpSrv   *http.Server
 	unlock    func()
 	done      chan struct{}
@@ -104,6 +125,19 @@ func Start(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{cfg: cfg, log: cfg.Log, routes: map[string]*entry{}, unlock: unlock, done: make(chan struct{})}
+	if cfg.TLS {
+		ca, _, err := certs.LoadOrCreateCA(cfg.StateDir)
+		if err == nil {
+			var is *certs.Issuer
+			if is, err = certs.NewIssuer(ca); err == nil {
+				s.tlsConfig = is.TLSConfig()
+			}
+		}
+		if err != nil {
+			unlock()
+			return nil, err
+		}
+	}
 	if err := s.listen(); err != nil {
 		s.closeListeners()
 		unlock()
@@ -111,12 +145,31 @@ func Start(cfg Config) (*Server, error) {
 	}
 	p := proxy.New(s)
 	p.Log = s.log
-	s.httpSrv = &http.Server{Handler: p, ReadHeaderTimeout: 30 * time.Second, ErrorLog: log.New(discardWriter{}, "", 0)}
+	s.httpSrv = &http.Server{Handler: p, TLSConfig: s.tlsConfig, ReadHeaderTimeout: 30 * time.Second, ErrorLog: log.New(discardWriter{}, "", 0)}
 	for _, ln := range s.proxyLns {
-		go s.httpSrv.Serve(ln)
+		if s.tlsConfig == nil {
+			go s.httpSrv.Serve(ln)
+			continue
+		}
+		plain, tlsRaw := proxy.SplitTLS(ln)
+		go s.httpSrv.Serve(plain)
+		go s.httpSrv.ServeTLS(tlsRaw, "", "")
+	}
+	for _, ln := range s.httpsLns {
+		go s.httpSrv.ServeTLS(ln, "", "")
 	}
 	go s.acceptControl()
-	s.log.Printf("daemon pid %d: proxy on port %d, control socket %s", os.Getpid(), s.proxyPort, SocketPath(cfg.StateDir))
+	mode := "HTTP"
+	if s.tlsConfig != nil {
+		mode = "HTTP and HTTPS"
+	}
+	s.log.Printf("daemon pid %d: proxy on port %d (%s), control socket %s", os.Getpid(), s.proxyPort, mode, SocketPath(cfg.StateDir))
+	switch {
+	case s.httpsPort > 0:
+		s.log.Printf("HTTPS also on port %d", s.httpsPort)
+	case s.httpsErr != "":
+		s.log.Printf("HTTPS port %d not used: %s", cfg.HTTPSPort, s.httpsErr)
+	}
 	return s, nil
 }
 
@@ -141,6 +194,16 @@ func (s *Server) listen() error {
 	}
 	s.proxyPort = port
 
+	if s.cfg.TLS {
+		if len(s.cfg.HTTPSListeners) > 0 {
+			s.httpsLns = s.cfg.HTTPSListeners
+			s.httpsPort = s.httpsLns[0].Addr().(*net.TCPAddr).Port
+			s.privileged = true
+		} else if s.cfg.HTTPSPort > 0 {
+			s.listenHTTPS(s.cfg.HTTPSPort)
+		}
+	}
+
 	sock := SocketPath(s.cfg.StateDir)
 	// We hold the lock, so any socket file left here is from a dead daemon.
 	os.Remove(sock)
@@ -151,6 +214,38 @@ func (s *Server) listen() error {
 	os.Chmod(sock, 0o600)
 	s.ctlLn = ln
 	return nil
+}
+
+// listenHTTPS binds the dedicated HTTPS port on every proxy host. Failure
+// is not fatal: the proxy port still serves HTTPS, so the daemon records why
+// and carries on.
+func (s *Server) listenHTTPS(port int) {
+	var lns []net.Listener
+	for i, h := range s.cfg.ProxyHosts {
+		ln, err := net.Listen("tcp", net.JoinHostPort(h, strconv.Itoa(port)))
+		if err != nil {
+			if i > 0 && isAddrNotAvail(err) {
+				continue
+			}
+			for _, l := range lns {
+				l.Close()
+			}
+			s.httpsErr = describeListenError(err, port)
+			return
+		}
+		lns = append(lns, ln)
+	}
+	s.httpsLns, s.httpsPort = lns, port
+}
+
+func describeListenError(err error, port int) string {
+	switch {
+	case errors.Is(err, syscall.EACCES), errors.Is(err, syscall.EPERM):
+		return "binding port " + strconv.Itoa(port) + " needs privileges"
+	case errors.Is(err, syscall.EADDRINUSE):
+		return "port " + strconv.Itoa(port) + " is in use by another program"
+	}
+	return err.Error()
 }
 
 // ProxyPort returns the port the proxy is listening on.
@@ -183,8 +278,18 @@ func (s *Server) closeListeners() {
 	for _, ln := range s.proxyLns {
 		ln.Close()
 	}
+	for _, ln := range s.httpsLns {
+		ln.Close()
+	}
 	if s.ctlLn != nil {
 		s.ctlLn.Close()
+	}
+}
+
+func (s *Server) pingResponse() Response {
+	return Response{
+		OK: true, PID: os.Getpid(), ProxyPort: s.proxyPort, BuildID: BuildID(),
+		TLS: s.tlsConfig != nil, HTTPSPort: s.httpsPort, HTTPSError: s.httpsErr, Privileged: s.privileged,
 	}
 }
 
@@ -249,7 +354,7 @@ func (s *Server) handle(sess *session, req Request) (Response, bool) {
 	s.mu.Unlock()
 	switch req.Op {
 	case OpPing:
-		return Response{OK: true, PID: os.Getpid(), ProxyPort: s.proxyPort, BuildID: BuildID()}, inSession
+		return s.pingResponse(), inSession
 	case OpList:
 		return Response{OK: true, Routes: s.Routes()}, inSession
 	case OpRegister:

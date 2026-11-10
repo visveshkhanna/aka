@@ -78,6 +78,16 @@ type Response struct {
 	PID       int    `json:"pid,omitempty"`
 	ProxyPort int    `json:"proxyPort,omitempty"`
 	BuildID   string `json:"buildId,omitempty"`
+	// TLS reports that ProxyPort also accepts HTTPS.
+	TLS bool `json:"tls,omitempty"`
+	// HTTPSPort is the dedicated HTTPS port (443), 0 if none. HTTPSError
+	// says why the requested one could not be bound.
+	HTTPSPort  int    `json:"httpsPort,omitempty"`
+	HTTPSError string `json:"httpsError,omitempty"`
+	// Privileged reports that the HTTPS listeners were bound by a root
+	// launcher. A restarted daemon would lose them, so it is not restarted
+	// automatically.
+	Privileged bool `json:"privileged,omitempty"`
 }
 
 // maxSocketPath is below the smallest sun_path limit (104 bytes on macOS).
