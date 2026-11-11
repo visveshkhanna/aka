@@ -88,6 +88,10 @@ func (s *session) read(c *daemon.Conn) {
 		if err != nil {
 			break
 		}
+		if r.Event == daemon.EventHint {
+			s.logf("%s", r.Message)
+			continue
+		}
 		if r.Event == daemon.EventStopped {
 			s.mu.Lock()
 			s.waiting = true

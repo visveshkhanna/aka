@@ -37,6 +37,9 @@ const (
 	// EventStopped tells sessions the daemon was stopped on purpose, so
 	// they wait for a proxy to come back instead of starting one.
 	EventStopped = "stopped"
+	// EventHint carries advice for the app's terminal in Message, such as
+	// the setting to change when the framework rejected the host.
+	EventHint = "hint"
 )
 
 // Error codes.
@@ -75,6 +78,8 @@ type Response struct {
 	Code  string `json:"code,omitempty"`
 	// Event is set on unsolicited messages to a session (EventEvicted).
 	Event string `json:"event,omitempty"`
+	// Message is the text of an EventHint.
+	Message string `json:"message,omitempty"`
 	// OwnerPID is the PID holding a conflicting route, or the evictor.
 	OwnerPID int `json:"ownerPid,omitempty"`
 

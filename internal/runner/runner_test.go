@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,6 +57,11 @@ func TestMain(m *testing.M) {
 		defer raw.Close()
 	}
 	http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if mode == "reject" && r.URL.Path != "/quit" {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "Invalid HTTP_HOST header: 'rej.localhost'. DisallowedHost")
+			return
+		}
 		if r.URL.Path == "/quit" {
 			fmt.Fprint(w, "bye")
 			go func() { time.Sleep(50 * time.Millisecond); os.Exit(7) }()
@@ -411,4 +417,46 @@ func TestProxyStopIsNotUndoneByRunningApp(t *testing.T) {
 	if r := e.quitAndWait("stay.localhost", ch); r.code != 7 {
 		t.Fatalf("Run = %+v", r)
 	}
+}
+
+// A framework rejecting the host gets an explanation in the app's terminal.
+func TestHostRejectionHintReachesTerminal(t *testing.T) {
+	e := newE2E(t)
+	var notices syncBuffer
+	exe, _ := os.Executable()
+	os.Setenv("RUNNER_TEST_MODE", "reject")
+	t.Cleanup(func() { os.Unsetenv("RUNNER_TEST_MODE") })
+	ch := make(chan result, 1)
+	go func() {
+		code, err := Run(Options{Hostname: "rej.localhost", Args: []string{exe}, Daemon: daemon.StartOptions{StateDir: e.dir},
+			Stdout: os.Stderr, Stderr: os.Stderr, Notice: &notices})
+		ch <- result{code, err}
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(notices.String(), "ALLOWED_HOSTS") {
+		if time.Now().After(deadline) {
+			t.Fatalf("no hint; notices:\n%s", notices.String())
+		}
+		e.get("rej.localhost", "/")
+		time.Sleep(50 * time.Millisecond)
+	}
+	e.get("rej.localhost", "/quit")
+	<-ch
+}
+
+type syncBuffer struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }

@@ -147,6 +147,7 @@ func Start(cfg Config) (*Server, error) {
 	}
 	p := proxy.New(s)
 	p.Log = s.log
+	p.OnHint = s.sendHint
 	s.httpSrv = &http.Server{Handler: p, TLSConfig: s.tlsConfig, ReadHeaderTimeout: 30 * time.Second, ErrorLog: log.New(discardWriter{}, "", 0)}
 	for _, ln := range s.proxyLns {
 		if s.tlsConfig == nil {
@@ -294,6 +295,20 @@ func (s *Server) pingResponse() Response {
 	return Response{
 		OK: true, PID: os.Getpid(), ProxyPort: s.proxyPort, BuildID: BuildID(),
 		TLS: s.tlsConfig != nil, HTTPSPort: s.httpsPort, HTTPSError: s.httpsErr, Privileged: s.privileged,
+	}
+}
+
+// sendHint passes advice about a route to the aka running that app.
+func (s *Server) sendHint(rt proxy.Route, hint string) {
+	s.mu.Lock()
+	e, ok := s.routes[rt.Hostname]
+	var sess *session
+	if ok {
+		sess = e.sess
+	}
+	s.mu.Unlock()
+	if sess != nil {
+		go sess.send(Response{OK: true, Event: EventHint, Message: hint})
 	}
 }
 
