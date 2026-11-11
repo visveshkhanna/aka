@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -42,7 +43,7 @@ func Main(args []string) int {
 		fmt.Println(brand.Name, Version)
 		return 0
 	case "list", "ls":
-		return cmdList()
+		return cmdList(args[1:])
 	case "proxy":
 		return cmdProxy(args[1:])
 	case "alias":
@@ -68,7 +69,7 @@ Usage:
   %[1]s <name> <command...>        run command, route <name>.localhost to it
   %[1]s <command...>               same, name inferred from the directory
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
-  %[1]s list                       show active routes
+  %[1]s list [--json]              show active routes
   %[1]s alias <name> <port>        route <name>.localhost to a port aka did not start
   %[1]s alias [rm <name>]          list or remove aliases
   %[1]s proxy start|stop|status    manage the proxy daemon
@@ -190,14 +191,54 @@ func cmdRun(args []string) int {
 	return code
 }
 
-func cmdList() int {
+func cmdList(args []string) int {
+	asJSON := len(args) > 0 && args[0] == "--json"
 	resp, err := daemon.Do(brand.StateDir(), daemon.Request{Op: daemon.OpList})
 	if err != nil {
-		fmt.Println("No routes (proxy is not running).")
+		if asJSON {
+			fmt.Println("[]")
+		} else {
+			fmt.Println("No routes (proxy is not running).")
+		}
 		return 0
 	}
 	ping, _ := daemon.Ping(brand.StateDir())
+	if asJSON {
+		return printRoutesJSON(os.Stdout, resp.Routes, ping)
+	}
 	printRoutes(os.Stdout, resp.Routes, ping)
+	return 0
+}
+
+// routeJSON is the `aka list --json` format.
+type routeJSON struct {
+	URL      string    `json:"url"`
+	Hostname string    `json:"hostname"`
+	Port     int       `json:"port"`
+	DialHost string    `json:"dialHost,omitempty"`
+	PID      int       `json:"pid,omitempty"`
+	Command  string    `json:"command,omitempty"`
+	Alias    bool      `json:"alias,omitempty"`
+	Since    time.Time `json:"since"`
+}
+
+func toRouteJSON(routes []proxy.Route, ping daemon.Response) []routeJSON {
+	out := make([]routeJSON, 0, len(routes))
+	for _, r := range routes {
+		out = append(out, routeJSON{
+			URL: ping.URL(r.Hostname), Hostname: r.Hostname, Port: r.Port, DialHost: r.DialHost,
+			PID: r.PID, Command: r.Command, Alias: r.PID == 0, Since: r.Since,
+		})
+	}
+	return out
+}
+
+func printRoutesJSON(w io.Writer, routes []proxy.Route, ping daemon.Response) int {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(toRouteJSON(routes, ping)); err != nil {
+		return fail(err)
+	}
 	return 0
 }
 
