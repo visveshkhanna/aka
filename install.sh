@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs aka from its GitHub releases on macOS and Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/visveshkhanna/aka/main/install.sh | sh
+#   curl -fsSL https://aka.visvesh.dev/install.sh | sh
 #
 # Settings, as environment variables:
 #   AKA_VERSION      a release tag such as v0.1.0 (default: the latest release)

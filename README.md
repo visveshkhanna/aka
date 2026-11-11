@@ -23,7 +23,7 @@ It is a single static binary with no runtime dependencies, and it works with any
 macOS and Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/visveshkhanna/aka/main/install.sh | sh
+curl -fsSL https://aka.visvesh.dev/install.sh | sh
 ```
 
 The script downloads the latest [release](https://github.com/visveshkhanna/aka/releases), checks its SHA-256 checksum and installs `aka` into `~/.local/bin`. Set `AKA_INSTALL_DIR` to choose another directory, or `AKA_VERSION=v0.1.0` to pin a version.
@@ -45,7 +45,7 @@ aka doctor
 
 ## Quick start
 
-From a project directory, run aka with no arguments. It finds the dev command (`package.json` scripts, `manage.py`, `Procfile`, `bin/dev`, `mix.exs`, Spring Boot, `*.csproj` and [more](docs/usage.md#bare-aka)) and runs it:
+From a project directory, run aka with no arguments. It finds the dev command (`package.json` scripts, `manage.py`, `Procfile`, `bin/dev`, `mix.exs`, Spring Boot, `*.csproj` and [more](https://aka.visvesh.dev/docs/running-apps#bare-aka)) and runs it:
 
 ```bash
 aka
@@ -75,9 +75,9 @@ sudo aka proxy start                  # https://myapp.localhost
 
 The proxy starts on first use and listens only on loopback (`127.0.0.1` and `::1`). `*.localhost` names resolve to loopback without any DNS setup.
 
-Each app gets a free port from 4000 to 4999 through the `PORT` environment variable. Most frameworks read it. For those that don't, such as Vite, Angular, Django, uvicorn and Rails, aka adds the matching port flag or variable ([presets](docs/presets.md)). Apps that ignore both are still found: aka watches the process tree for listening sockets and the output for printed URLs, and routes to the port the app actually uses, for as long as it runs.
+Each app gets a free port from 4000 to 4999 through the `PORT` environment variable. Most frameworks read it. For those that don't, such as Vite, Angular, Django, uvicorn and Rails, aka adds the matching port flag or variable ([presets](https://aka.visvesh.dev/docs/presets)). Apps that ignore both are still found: aka watches the process tree for listening sockets and the output for printed URLs, and routes to the port the app actually uses, for as long as it runs.
 
-When the command exits, the route goes away. If aka itself is killed, the proxy notices and stops the app it left behind. More detail is in [How it works](docs/how-it-works.md).
+When the command exits, the route goes away. If aka itself is killed, the proxy notices and stops the app it left behind. More detail is in [How it works](https://aka.visvesh.dev/docs/how-it-works).
 
 ## Several apps
 
@@ -93,7 +93,7 @@ cmd = "python -m worker"
 dir = "services/worker"
 ```
 
-`aka up` runs them all, each with its own URL (`web.localhost`, `api.localhost`) and its output prefixed by name. Ctrl+C stops them all. For Docker Compose, `aka compose` runs `docker compose up` and gives each published service a URL like `web.shop.localhost`. See [Usage](docs/usage.md#several-apps-akatoml-and-aka-up).
+`aka up` runs them all, each with its own URL (`web.localhost`, `api.localhost`) and its output prefixed by name. Ctrl+C stops them all. For Docker Compose, `aka compose` runs `docker compose up` and gives each published service a URL like `web.shop.localhost`. See [Several apps](https://aka.visvesh.dev/docs/multiple-apps) and [Docker Compose](https://aka.visvesh.dev/docs/docker-compose).
 
 ## For AI agents
 
@@ -115,26 +115,29 @@ Run `aka --help` for the full list.
 
 | Group | Commands | Docs |
 |---|---|---|
-| Run apps | `aka`, `aka <name> <cmd>`, `aka <cmd>`, `aka up` | [Usage](docs/usage.md) |
-| Routes | `list`, `alias`, `compose` | [Aliases](docs/usage.md#aliases-and-list), [Docker Compose](docs/usage.md#docker-compose) |
-| Proxy | `proxy start`, `proxy stop`, `proxy status`, `service install`, `service status`, `service uninstall` | [Proxy and login service](docs/usage.md#the-proxy-and-the-login-service) |
-| HTTPS | `trust`, `untrust` | [HTTPS](docs/https.md) |
-| Diagnose | `doctor` | [Doctor](docs/usage.md#doctor) |
+| Run apps | `aka`, `aka <name> <cmd>`, `aka <cmd>`, `aka up` | [Running apps](https://aka.visvesh.dev/docs/running-apps), [Several apps](https://aka.visvesh.dev/docs/multiple-apps) |
+| Routes | `list`, `alias`, `compose` | [Aliases](https://aka.visvesh.dev/docs/aliases), [Docker Compose](https://aka.visvesh.dev/docs/docker-compose) |
+| Proxy | `proxy start`, `proxy stop`, `proxy status`, `service install`, `service status`, `service uninstall` | [The proxy](https://aka.visvesh.dev/docs/proxy) |
+| HTTPS | `trust`, `untrust` | [HTTPS](https://aka.visvesh.dev/docs/https) |
+| Diagnose | `doctor` | [Troubleshooting](https://aka.visvesh.dev/docs/troubleshooting) |
 | Agents | `mcp` | [For AI agents](#for-ai-agents) |
 
 Run `aka doctor` first when a URL does not load. It checks the proxy, the certificate authority, name resolution and every route, and says what to fix. When a framework rejects the `.localhost` host (Django `ALLOWED_HOSTS`, Vite `allowedHosts`, Rails `config.hosts` and others), aka prints the setting to change in the app's terminal.
 
 ## Platforms
 
-aka runs on macOS, Linux and Windows 10 1803 or later, on x64 and arm64. Every change is tested on all six combinations, and the trust store integration on Ubuntu, Debian, Fedora, Rocky Linux, Alpine, Arch and openSUSE. Platform notes, including what differs on Windows, are in [Platforms](docs/platforms.md).
+aka runs on macOS, Linux and Windows 10 1803 or later, on x64 and arm64. Every change is tested on all six combinations, and the trust store integration on Ubuntu, Debian, Fedora, Rocky Linux, Alpine, Arch and openSUSE. Platform notes, including what differs on Windows, are in [Platforms](https://aka.visvesh.dev/docs/platforms).
 
 ## Documentation
 
-- [Usage](docs/usage.md): running apps, names, `aka.toml`, Docker Compose, aliases, the proxy, environment variables
-- [Presets](docs/presets.md): how aka sets the port for each framework, and how to add your own
-- [HTTPS](docs/https.md): the local certificate authority, trust, port 443, framework settings
-- [Platforms](docs/platforms.md): macOS, Linux and Windows specifics
-- [How it works](docs/how-it-works.md): the proxy, port detection and process handling
+The full documentation is at **[aka.visvesh.dev](https://aka.visvesh.dev/docs)**:
+
+- [Running apps](https://aka.visvesh.dev/docs/running-apps): names, flags, a bare `aka` and worktrees
+- [Several apps](https://aka.visvesh.dev/docs/multiple-apps) and [Docker Compose](https://aka.visvesh.dev/docs/docker-compose)
+- [Presets](https://aka.visvesh.dev/docs/presets): how aka sets the port for each framework, and how to add your own
+- [HTTPS](https://aka.visvesh.dev/docs/https): the local certificate authority, trust, port 443, framework settings
+- [Configuration](https://aka.visvesh.dev/docs/configuration): `aka.toml`, environment variables and files
+- [Platforms](https://aka.visvesh.dev/docs/platforms) and [Troubleshooting](https://aka.visvesh.dev/docs/troubleshooting)
 
 ## Development
 

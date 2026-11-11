@@ -28,7 +28,7 @@ cat <<NOTES
 macOS and Linux:
 
 \`\`\`bash
-curl -fsSL https://raw.githubusercontent.com/$repo/main/install.sh | AKA_VERSION=$tag sh
+curl -fsSL https://aka.visvesh.dev/install.sh | AKA_VERSION=$tag sh
 \`\`\`
 
 Windows: download \`aka_${version}_windows_amd64.zip\` (or \`arm64\`) below and put \`aka.exe\` on your \`PATH\`.
