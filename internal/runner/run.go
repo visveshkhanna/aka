@@ -21,6 +21,7 @@ import (
 	"aka/internal/certs"
 	"aka/internal/daemon"
 	"aka/internal/detect"
+	"aka/internal/presets"
 )
 
 // Options configures a run.
@@ -30,6 +31,9 @@ type Options struct {
 	Force    bool     // take over a hostname another aka holds
 	PortHint int      // pin the upstream port (skip heuristics)
 	Daemon   daemon.StartOptions
+	// Presets set the port of commands that ignore PORT. Nil disables
+	// them; so does a {port} in Args, which means the user chose.
+	Presets *presets.Set
 
 	Stdout, Stderr *os.File
 	// Notice receives aka's own status lines (default: Stderr).
@@ -88,6 +92,23 @@ func Run(o Options) (int, error) {
 
 	args := SubstitutePort(o.Args, assigned)
 	cwd, _ := os.Getwd()
+	var presetEnv []string
+	if o.Presets != nil && !hasPlaceholder(o.Args) {
+		r := o.Presets.Apply(args, assigned, cwd, os.Getenv)
+		args, presetEnv = r.Args, r.Env
+		switch {
+		case r.Preset == "":
+		case r.Skipped != "" && len(r.Env) == 0:
+			logf("preset %s: not applied (%s); detecting the port instead", r.Preset, r.Skipped)
+		default:
+			var what []string
+			if len(r.Added) > 0 {
+				what = append(what, strings.Join(r.Added, " "))
+			}
+			what = append(what, r.Env...)
+			logf("preset %s: %s", r.Preset, strings.Join(what, " "))
+		}
+	}
 	path := AugmentPath(os.Getenv("PATH"), cwd)
 	bin, err := LookPath(args[0], path)
 	if err != nil {
@@ -103,7 +124,7 @@ func Run(o Options) (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	cmd.Env = BuildEnv(os.Environ(), assigned, url, path, caFile, out.piped)
+	cmd.Env = append(BuildEnv(os.Environ(), assigned, url, path, caFile, out.piped), presetEnv...)
 
 	logf("%s -> %s (PORT=%d)", url, display, assigned)
 	sigs := notifySignals() // before Start; see notifySignals
@@ -182,6 +203,15 @@ func exitCode(err error) int {
 		return ee.ExitCode()
 	}
 	return 1
+}
+
+func hasPlaceholder(args []string) bool {
+	for _, a := range args {
+		if strings.Contains(a, "{port}") {
+			return true
+		}
+	}
+	return false
 }
 
 // SubstitutePort replaces every "{port}" in args with port.

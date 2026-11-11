@@ -39,6 +39,7 @@ func TestParseRunArgs(t *testing.T) {
 		{"flags before name", []string{"--force", "--port-hint", "8000", "web", "python", "app.py"},
 			RunArgs{Name: "web", Force: true, PortHint: 8000, Command: []string{"python", "app.py"}}, ""},
 		{"short force", []string{"-f", "web", "vite"}, RunArgs{Name: "web", Force: true, Command: []string{"vite"}}, ""},
+		{"no preset", []string{"--no-preset", "web", "vite"}, RunArgs{Name: "web", NoPreset: true, Command: []string{"vite"}}, ""},
 		{"flags after name belong to the command", []string{"web", "vite", "--force", "--port", "1"},
 			RunArgs{Name: "web", Command: []string{"vite", "--force", "--port", "1"}}, ""},
 		{"-- inside command after name", []string{"web", "npm", "run", "dev", "--", "--open"},

@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,6 +18,7 @@ import (
 
 	"aka/internal/brand"
 	"aka/internal/daemon"
+	"aka/internal/presets"
 	"aka/internal/proxy"
 	"aka/internal/runner"
 )
@@ -72,6 +74,7 @@ Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
   --force, -f         take over a name another %[1]s is using
   --port-hint <port>  route to this port instead of detecting one
+  --no-preset         do not add port flags or env for known frameworks
 
 The command gets PORT=<free port>, HOST=127.0.0.1 and %[3]s=<public url>.
 If it ignores PORT, %[1]s routes to whatever port it actually listens on.
@@ -153,12 +156,19 @@ func cmdRun(args []string) int {
 	if so.TLS {
 		ensureTrust(so.StateDir)
 	}
+	var ps *presets.Set
+	if !ra.NoPreset {
+		if ps, err = presets.Load(filepath.Join(so.StateDir, "presets.json")); err != nil {
+			notice("ignoring your presets file: %v", err)
+		}
+	}
 	code, err := runner.Run(runner.Options{
 		Hostname: Hostname(name),
 		Args:     ra.Command,
 		Force:    ra.Force,
 		PortHint: ra.PortHint,
 		Daemon:   so,
+		Presets:  ps,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %v\n", brand.Name, err)

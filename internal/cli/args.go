@@ -16,6 +16,7 @@ type RunArgs struct {
 	Command  []string
 	Force    bool
 	PortHint int
+	NoPreset bool
 }
 
 // ParseRunArgs splits flags, the optional app name and the command.
@@ -51,6 +52,8 @@ flags:
 		switch name {
 		case "--force", "-f":
 			ra.Force = true
+		case "--no-preset":
+			ra.NoPreset = true
 		case "--name", "-n":
 			v, err := needVal()
 			if err != nil {

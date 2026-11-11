@@ -16,6 +16,7 @@ import (
 
 	"aka/internal/brand"
 	"aka/internal/daemon"
+	"aka/internal/presets"
 )
 
 // TestMain doubles as the child app for the end-to-end tests. Modes:
@@ -31,8 +32,15 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	addr := "127.0.0.1:0"
-	if mode == "port" {
+	switch mode {
+	case "port":
 		addr = "127.0.0.1:" + os.Getenv("PORT")
+	case "flagport": // listens where --listen says, as a preset would set it
+		for i, a := range os.Args {
+			if a == "--listen" && i+1 < len(os.Args) {
+				addr = "127.0.0.1:" + os.Args[i+1]
+			}
+		}
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -53,7 +61,7 @@ func TestMain(m *testing.M) {
 			go func() { time.Sleep(50 * time.Millisecond); os.Exit(7) }()
 			return
 		}
-		fmt.Fprintf(w, "mode=%s port=%d env=%s host=%s url=%s", mode, port, os.Getenv("PORT"), os.Getenv("HOST"), os.Getenv(brand.Env("URL")))
+		fmt.Fprintf(w, "mode=%s port=%d env=%s host=%s url=%s preset_env=%s", mode, port, os.Getenv("PORT"), os.Getenv("HOST"), os.Getenv(brand.Env("URL")), os.Getenv("TESTAPP_ENV"))
 	}))
 }
 
@@ -141,6 +149,8 @@ type e2e struct {
 	dir   string
 	srv   *daemon.Server
 	proxy int
+	// presets, if set, are passed to Run.
+	presets *presets.Set
 }
 
 func newE2E(t *testing.T) *e2e {
@@ -182,6 +192,7 @@ func (e *e2e) start(host, mode string, viaShell bool, extra ...string) (<-chan r
 			Hostname: host,
 			Args:     args,
 			Daemon:   daemon.StartOptions{StateDir: e.dir},
+			Presets:  e.presets,
 			Stdout:   out, Stderr: out, Notice: io.Discard,
 		})
 		ch <- result{code, err}
@@ -329,4 +340,30 @@ func TestRunForceTakesOverAndStopsPreviousApp(t *testing.T) {
 	}
 	e.waitReady("take.localhost")
 	e.quitAndWait("take.localhost", second)
+}
+
+// A preset for the test binary itself: its flag sets the port the app
+// listens on (it ignores PORT), and its env reaches the app.
+func TestRunAppliesPreset(t *testing.T) {
+	e := newE2E(t)
+	f := filepath.Join(e.dir, "presets.json")
+	exe, _ := os.Executable()
+	os.WriteFile(f, []byte(`{"presets": [{"name": "testapp", "commands": [`+strconv.Quote(filepath.Base(exe))+`],
+		"inject": [{"flags": ["--listen", "{port}"], "unless": ["--listen"]}],
+		"env": {"TESTAPP_ENV": "{port}"}}]}`), 0o644)
+	ps, err := presets.Load(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.presets = ps
+	ch, _ := e.start("preset.localhost", "flagport", false)
+	body := e.waitReady("preset.localhost")
+	rt, _ := e.srv.Lookup("preset.localhost")
+	p := strconv.Itoa(rt.Port)
+	if !strings.Contains(body, "mode=flagport port="+p+" env="+p) || !strings.Contains(body, "preset_env="+p) {
+		t.Fatalf("app did not get the preset's flag and env: %q (route %+v)", body, rt)
+	}
+	if r := e.quitAndWait("preset.localhost", ch); r.code != 7 {
+		t.Fatalf("Run = %+v", r)
+	}
 }
