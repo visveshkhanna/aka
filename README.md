@@ -16,11 +16,11 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: build step 5 of 7.** HTTP and HTTPS with a local CA, presets
-> for common frameworks, name and dev command inference. Verified on macOS
-> and Linux. Windows support is built and cross-compiled, but has not been
-> run on Windows yet (see [Windows](#windows)). `alias` and `doctor` are
-> still to come.
+> **Status: build step 6 of 7.** HTTP and HTTPS with a local CA, presets
+> for common frameworks, name and dev command inference, `alias`, `doctor`
+> and worktree names. Verified on macOS and Linux. Windows support is built
+> and cross-compiled, but has not been run on Windows yet (see
+> [Windows](#windows)).
 
 ## How it works
 
@@ -83,6 +83,51 @@ The app name comes from the same walk: the nearest of `package.json`
 segment, `/v2` dropped), `composer.json`, `pom.xml`, `settings.gradle`,
 `mix.exs`, `*.csproj` and `angular.json`. Failing those, it is the repository
 root's name, then the directory's.
+
+## Worktrees
+
+In a checkout made with `git worktree add`, on a branch other than `main` or
+`master`, the inferred name gets the branch's last segment as a prefix:
+`feature/login` in a worktree of `shop` becomes `login.shop.localhost`. Two
+checkouts can then run at once. The main checkout never gets a prefix.
+Explicit names (`aka web ...`) are used as given. `AKA_PREFIX=staging` sets
+the prefix yourself; `AKA_PREFIX=` turns it off.
+
+## Aliases, list and doctor
+
+```sh
+aka alias db 5432            # https://db.localhost -> a port aka did not start
+aka alias api 127.0.0.1:8080 # or a loopback address
+aka alias                    # list aliases
+aka alias rm db
+aka list                     # running apps and aliases (--json for scripts)
+aka doctor                   # check everything and say what to fix
+```
+
+Aliases are saved in `~/.aka/aliases.json` and restored with the proxy. A
+running app cannot take an alias's name, even with `--force`.
+
+`aka doctor` checks:
+- the state directory;
+- the proxy: running, current build, HTTPS mode, port 443, reachability on
+  both loopbacks;
+- the CA: constraints, expiry, system trust, and Firefox/NSS;
+- `*.localhost` resolution;
+- every route, through the proxy;
+- the current project: name, dev command and the preset it would use.
+
+It exits 1 if something fails.
+
+**Host rejections.** When an app answers 400 or 403 because the framework
+rejects the `*.localhost` host or origin, the aka running that app prints
+the setting to change. This covers Django `ALLOWED_HOSTS` and CSRF origins,
+Vite `allowedHosts`, webpack-dev-server, Rails `config.hosts` and ASP.NET
+`AllowedHosts`. `doctor` reports the same.
+
+**Stopping the proxy.** `aka proxy stop` stops routing, but running apps
+keep running. Each one says so and re-registers when the proxy starts again
+(`aka proxy start` or the next app). If the proxy crashes instead, apps
+restart it right away.
 
 ## Presets
 
@@ -195,7 +240,10 @@ aka                            run this project's dev command, name inferred
 aka <name> <command...>        run command, route <name>.localhost to it
 aka <command...>               same, name inferred from the project
 aka <name> -- <command...>     explicit name
-aka list                       show active routes
+aka list [--json]              show active routes and aliases
+aka alias <name> <port>        route <name>.localhost to a port aka did not start
+aka alias [rm <name>]          list or remove aliases
+aka doctor                     check the setup and explain what is wrong
 aka proxy start|stop|status    manage the proxy daemon
 sudo aka proxy start           also serve port 443 (root is dropped after binding)
 aka trust | untrust            add or remove the local CA in the system trust store
@@ -212,8 +260,9 @@ The first word is the app name if it is not a command on your PATH. Use
 `--name` or `--` when an app is named like a command (`aka --name test ...`).
 
 Environment: `AKA_PROXY_PORT` (default 1355), `AKA_HTTPS_PORT` (default 443,
-`0` for none), `AKA_HTTPS=0` (plain HTTP only), `AKA_STATE_DIR` (default
-`~/.aka`), `AKA_NO_PTY=1` (capture output with pipes, not a pseudo-terminal).
+`0` for none), `AKA_HTTPS=0` (plain HTTP only), `AKA_PREFIX` (worktree
+prefix; empty turns it off), `AKA_STATE_DIR` (default `~/.aka`),
+`AKA_NO_PTY=1` (capture output with pipes, not a pseudo-terminal).
 
 ## Build and test
 
