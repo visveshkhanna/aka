@@ -124,6 +124,8 @@ npm run build && npm run check-links
 
 In MDX, write `<name>` and `{port}` inside code spans, or they are read as JSX. The changelog page and `/install.sh` are copied from the repository root at build time; edit `CHANGELOG.md` and `install.sh`, not their copies.
 
+The icon and the artwork behind the link preview images are in `website/assets/brand`. After changing them, run `python3 website/scripts/brand-assets.py` (it needs Pillow) and commit the generated icons.
+
 ## Adding a preset
 
 A preset tells aka how to set the port of a dev server that ignores `PORT`.
