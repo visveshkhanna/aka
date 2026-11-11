@@ -28,6 +28,7 @@ import (
 type Options struct {
 	Hostname string   // full hostname, e.g. myapp.localhost
 	Args     []string // command and arguments
+	Dir      string   // working directory ("" for the current one)
 	Force    bool     // take over a hostname another aka holds
 	PortHint int      // pin the upstream port (skip heuristics)
 	Daemon   daemon.StartOptions
@@ -91,7 +92,10 @@ func Run(o Options) (int, error) {
 	}
 
 	args := SubstitutePort(o.Args, assigned)
-	cwd, _ := os.Getwd()
+	cwd := o.Dir
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
 	var presetEnv []string
 	if o.Presets != nil && !hasPlaceholder(o.Args) {
 		r := o.Presets.Apply(args, assigned, cwd, os.Getenv)
@@ -110,13 +114,18 @@ func Run(o Options) (int, error) {
 		}
 	}
 	path := AugmentPath(os.Getenv("PATH"), cwd)
-	bin, err := LookPath(args[0], path)
+	name := args[0]
+	if strings.ContainsAny(name, `/\`) && !filepath.IsAbs(name) {
+		name = filepath.Join(cwd, name) // bin/dev runs relative to the project dir
+	}
+	bin, err := LookPath(name, path)
 	if err != nil {
 		return 127, fmt.Errorf("%s: command not found", args[0])
 	}
 
 	cmd := exec.Command(bin, args[1:]...)
 	cmd.Args[0] = args[0]
+	cmd.Dir = cwd
 	cmd.Stdin = os.Stdin
 	isolate(cmd)
 	hints := &detect.Hints{}

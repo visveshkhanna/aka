@@ -367,3 +367,25 @@ func TestRunAppliesPreset(t *testing.T) {
 		t.Fatalf("Run = %+v", r)
 	}
 }
+
+func TestRunRelativeCommandFromDir(t *testing.T) {
+	e := newE2E(t)
+	dir := t.TempDir()
+	exe, _ := os.Executable()
+	os.MkdirAll(filepath.Join(dir, "bin"), 0o755)
+	if err := os.Symlink(exe, filepath.Join(dir, "bin", "dev")); err != nil {
+		t.Fatal(err)
+	}
+	os.Setenv("RUNNER_TEST_MODE", "port")
+	t.Cleanup(func() { os.Unsetenv("RUNNER_TEST_MODE") })
+	ch := make(chan result, 1)
+	go func() {
+		code, err := Run(Options{Hostname: "rel.localhost", Args: []string{"bin/dev"}, Dir: dir,
+			Daemon: daemon.StartOptions{StateDir: e.dir}, Stdout: os.Stderr, Stderr: os.Stderr, Notice: io.Discard})
+		ch <- result{code, err}
+	}()
+	e.waitReady("rel.localhost")
+	if r := e.quitAndWait("rel.localhost", ch); r.code != 7 {
+		t.Fatalf("Run = %+v", r)
+	}
+}
