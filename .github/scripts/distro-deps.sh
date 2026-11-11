@@ -22,6 +22,11 @@ install() {
   fi
 }
 
+# Nothing to do if the image already has them.
+if command -v curl >/dev/null && { command -v update-ca-certificates >/dev/null || command -v update-ca-trust >/dev/null; }; then
+  exit 0
+fi
+
 # Mirrors fail now and then; try a few times before failing the job.
 for attempt in 1 2 3; do
   install && exit 0

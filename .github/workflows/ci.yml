@@ -174,8 +174,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - ubuntu:24.04
-          - ubuntu:22.04
+          # Ubuntu 24.04 and 22.04 with curl and ca-certificates already
+          # installed, so the job does not depend on Ubuntu's mirrors.
+          - buildpack-deps:noble-curl
+          - buildpack-deps:jammy-curl
           - debian:12
           - fedora:latest
           - rockylinux:9
@@ -185,7 +187,7 @@ jobs:
         include:
           # Also run the unit tests as root in a few, which covers the
           # privilege drop behind `sudo aka proxy start`.
-          - { image: ubuntu:24.04, root-tests: true }
+          - { image: "buildpack-deps:noble-curl", root-tests: true }
           - { image: alpine:latest, root-tests: true }
           - { image: fedora:latest, root-tests: true }
     steps:
