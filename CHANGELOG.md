@@ -4,6 +4,12 @@ All notable changes to aka are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
+### Fixed
+
+- `aka --version`, `aka doctor` and the MCP server report the release version for binaries built with `go install`, instead of `dev`.
+
 ## [0.1.0] - 2026-11-11
 
 The first release.
@@ -40,5 +46,6 @@ The first release.
 
 - macOS, Linux and Windows on x64 and arm64, and 32-bit ARM Linux, as single static binaries.
 
-[Unreleased]: https://github.com/visveshkhanna/aka/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/visveshkhanna/aka/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/visveshkhanna/aka/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/visveshkhanna/aka/releases/tag/v0.1.0
