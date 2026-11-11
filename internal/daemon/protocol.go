@@ -165,7 +165,7 @@ func SocketPath(stateDir string) string {
 		return p
 	}
 	sum := sha256.Sum256([]byte(stateDir))
-	return filepath.Join(os.TempDir(), "aka-"+hex.EncodeToString(sum[:8])+".sock")
+	return filepath.Join(os.TempDir(), brand.Name+"-"+hex.EncodeToString(sum[:8])+".sock")
 }
 
 // Paths within the state directory.

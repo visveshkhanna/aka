@@ -47,7 +47,7 @@ const MaxHops = 5
 
 // loopbackAlias is the upstream host used when the bind address is unknown;
 // the dialer expands it to 127.0.0.1 then ::1. It never reaches DNS.
-const loopbackAlias = "aka-loopback"
+const loopbackAlias = brand.Name + "-loopback"
 
 // Server is an http.Handler that proxies by Host header.
 type Server struct {
