@@ -16,13 +16,36 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: all 7 build steps done.** This covers:
-> - HTTP and HTTPS with a local CA, and presets for common frameworks;
-> - name and dev command inference, `alias`, `doctor` and worktree names;
-> - `aka.toml` with `aka up`, Docker Compose, an MCP server and a login service.
->
-> Verified on macOS and Linux. Windows support is built and cross-compiled,
-> but has not been run on Windows yet (see [Windows](#windows)).
+## Install
+
+```sh
+go install github.com/visveshkhanna/aka/cmd/aka@latest
+```
+
+Or from a checkout:
+
+```sh
+git clone https://github.com/visveshkhanna/aka && cd aka
+go build -o bin/aka ./cmd/aka
+```
+
+It needs Go 1.26 or later to build; the result is one static binary with no
+runtime dependencies. Then, once:
+
+```sh
+aka trust      # add the local CA to the system trust store, for HTTPS
+aka doctor     # check the setup
+```
+
+## Status
+
+| Platform | State |
+|---|---|
+| macOS | Tested: HTTP, HTTPS, presets, `aka up`, compose, the login service |
+| Linux | Tested on Ubuntu, Debian, Alpine and Oracle Linux, including `aka trust` and `sudo aka proxy start` |
+| Windows | Built and unit-tested, but **not yet run on Windows**; see [Windows](#windows) |
+
+Everything described below is implemented.
 
 ## How it works
 
@@ -335,8 +358,9 @@ go build -o bin/aka ./cmd/aka
 go test -race ./...
 ```
 
-Requires Go 1.26+. The binary is static (no cgo) and cross-compiles with
-`GOOS`/`GOARCH`.
+The binary is static (no cgo) and cross-compiles with `GOOS`/`GOARCH`. Set
+the version with
+`-ldflags "-X github.com/visveshkhanna/aka/internal/cli.Version=v0.1.0"`.
 
 ### Testing on Linux
 
@@ -344,10 +368,8 @@ From macOS, cross-compile the test binaries and run them in any Linux
 container:
 
 ```sh
-for p in certs cli daemon detect lockfile ports privdrop proxy runner trust; do
-  GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c -o out/$p.test ./internal/$p
-done
-docker run --rm -v "$PWD/out:/t:ro" alpine sh -c 'cd /tmp; for t in /t/*.test; do $t; done'
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c -o out/ ./...
+docker run --rm -v "$PWD/out:/t:ro" alpine sh -c 'cd /tmp; for t in /t/*.test; do $t || exit 1; done'
 ```
 
 Run as root (the default in most images), this also exercises the
@@ -358,5 +380,10 @@ privilege drop used by `sudo aka proxy start`.
 The design follows [portless](https://github.com/vercel-labs/portless) by
 Vercel Labs (Apache-2.0). Parts of the proxy, port picker and process
 handling are translated from its TypeScript sources. See [NOTICE](NOTICE) and
-[third_party/portless/LICENSE](third_party/portless/LICENSE). This project
-has no license of its own yet.
+[third_party/portless/LICENSE](third_party/portless/LICENSE).
+
+## License
+
+`aka` does not have a license of its own yet. Until it does, the code here
+is not licensed for reuse; the portless-derived parts remain under
+Apache-2.0 as described in [NOTICE](NOTICE).
