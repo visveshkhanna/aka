@@ -48,6 +48,8 @@ func Main(args []string) int {
 		return cmdProxy(args[1:])
 	case "alias":
 		return cmdAlias(args[1:])
+	case "doctor":
+		return cmdDoctor()
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -75,6 +77,7 @@ Usage:
   %[1]s proxy start|stop|status    manage the proxy daemon
   sudo %[1]s proxy start           also serve port 443 (root is dropped after binding)
   %[1]s trust | untrust            add or remove the local CA in the system trust store
+  %[1]s doctor                     check the setup and explain what is wrong
 
 Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
