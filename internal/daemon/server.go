@@ -139,6 +139,7 @@ func Start(cfg Config) (*Server, error) {
 			return nil, err
 		}
 	}
+	s.loadAliases()
 	if err := s.listen(); err != nil {
 		s.closeListeners()
 		unlock()
@@ -366,6 +367,8 @@ func (s *Server) handle(sess *session, req Request) (Response, bool) {
 		return s.update(sess, req), true
 	case OpChild:
 		return s.setChild(sess, req), true
+	case OpAlias:
+		return s.alias(req), inSession
 	case OpShutdown:
 		go func() {
 			time.Sleep(50 * time.Millisecond) // let the response flush
@@ -387,6 +390,9 @@ func (s *Server) register(sess *session, req Request) (Response, bool) {
 		return Response{Error: "session already registered " + sess.host, Code: CodeInvalid}, true
 	}
 	if old, ok := s.routes[req.Hostname]; ok {
+		if old.isAlias() {
+			return aliasConflict(old), false // even with --force: aliases are deliberate
+		}
 		if !req.Force {
 			return Response{
 				Error:    fmt.Sprintf("%s is already in use by %s (pid %d)", req.Hostname, old.route.Command, old.route.PID),

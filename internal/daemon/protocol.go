@@ -29,6 +29,7 @@ const (
 	OpUpdate   = "update"   // session only: set the detected upstream port
 	OpChild    = "child"    // session only: report the spawned child, for orphan cleanup
 	OpShutdown = "shutdown"
+	OpAlias    = "alias" // add, replace or (with Remove) delete a static route
 
 	// EventEvicted is sent by the daemon to a session whose route was taken
 	// over by `aka --force` elsewhere.
@@ -57,6 +58,8 @@ type Request struct {
 	// Port and DialHost are the detected upstream, for OpUpdate.
 	Port     int    `json:"port,omitempty"`
 	DialHost string `json:"dialHost,omitempty"`
+	// Remove deletes the alias named by Hostname (OpAlias).
+	Remove bool `json:"remove,omitempty"`
 	// Child identifies the spawned command, for OpChild. If the session
 	// drops while that process is still alive (aka was SIGKILLed), the
 	// daemon terminates it so it does not keep holding its port.
