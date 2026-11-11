@@ -45,6 +45,8 @@ func Main(args []string) int {
 		return cmdList()
 	case "proxy":
 		return cmdProxy(args[1:])
+	case "alias":
+		return cmdAlias(args[1:])
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -67,6 +69,8 @@ Usage:
   %[1]s <command...>               same, name inferred from the directory
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
   %[1]s list                       show active routes
+  %[1]s alias <name> <port>        route <name>.localhost to a port aka did not start
+  %[1]s alias [rm <name>]          list or remove aliases
   %[1]s proxy start|stop|status    manage the proxy daemon
   sudo %[1]s proxy start           also serve port 443 (root is dropped after binding)
   %[1]s trust | untrust            add or remove the local CA in the system trust store
