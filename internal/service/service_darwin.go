@@ -63,3 +63,5 @@ func query() Status {
 	}
 	return st
 }
+
+const startsOnInstall = true

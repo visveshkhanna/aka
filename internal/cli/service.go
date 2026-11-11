@@ -83,6 +83,11 @@ func serviceInstall() int {
 		return fail(err)
 	}
 	fmt.Printf("Installed %s.\nThe proxy now starts at login.\n", path)
+	if !running && !service.StartsOnInstall() {
+		if _, err := daemon.Ensure(so); err != nil {
+			notice("could not start the proxy now (%v); it starts at the next login", err)
+		}
+	}
 	if running {
 		fmt.Println("A proxy with running apps was left alone; the service's proxy takes over after `" + brand.Name + " proxy stop` or at the next login.")
 	}

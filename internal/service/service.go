@@ -42,8 +42,14 @@ type Status struct {
 	Detail    string
 }
 
-// Install writes the service definition and starts it.
+// Install writes the service definition and, where the service manager
+// can (launchd, systemd), starts it. See StartsOnInstall.
 func Install(s Spec) (string, error) { return install(s) }
+
+// StartsOnInstall reports whether Install also starts the daemon. A Run key
+// entry on Windows only takes effect at the next login, so the caller
+// starts the daemon itself.
+func StartsOnInstall() bool { return startsOnInstall }
 
 // Uninstall stops the service and removes its definition.
 func Uninstall() error { return uninstall() }

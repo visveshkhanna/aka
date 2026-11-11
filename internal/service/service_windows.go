@@ -10,6 +10,8 @@ const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 
 var valueName = Label
 
+const startsOnInstall = false
+
 func install(s Spec) (string, error) {
 	k, _, err := registry.CreateKey(registry.CURRENT_USER, runKey, registry.SET_VALUE)
 	if err != nil {
