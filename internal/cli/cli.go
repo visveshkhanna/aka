@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,7 +28,20 @@ import (
 )
 
 // Version is set at build time with -ldflags "-X github.com/visveshkhanna/aka/internal/cli.Version=...".
+// Use version() to read it.
 var Version = "dev"
+
+// version is the release version: the one stamped at build time, or else
+// the module version Go records for `go install ...@v0.1.0`, or "dev".
+func version() string {
+	if Version != "dev" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return Version
+}
 
 const daemonCmd = "__daemon"
 
@@ -41,7 +55,7 @@ func Main(args []string) int {
 		usage(os.Stdout)
 		return 0
 	case "-v", "--version", "version":
-		fmt.Println(brand.Name, Version)
+		fmt.Println(brand.Name, version())
 		return 0
 	case "list", "ls":
 		return cmdList(args[1:])

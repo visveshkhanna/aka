@@ -26,7 +26,7 @@ func mcpServer(dir string) *mcp.Server {
 	str := map[string]any{"type": "string"}
 	return &mcp.Server{
 		Name:    brand.Name,
-		Version: Version,
+		Version: version(),
 		Instructions: "Local dev servers run by " + brand.Name + " have stable URLs such as https://myapp." + brand.DefaultTLD +
 			". Use list_apps or get_url to find the URL of an app instead of guessing a localhost port.",
 		Tools: []mcp.Tool{

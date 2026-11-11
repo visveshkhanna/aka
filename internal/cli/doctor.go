@@ -61,7 +61,7 @@ func cmdDoctor() int {
 
 func doctor(w io.Writer, dir, cwd string) int {
 	r := &report{w: w}
-	fmt.Fprintf(w, "%s %s doctor\n", brand.Name, Version)
+	fmt.Fprintf(w, "%s %s doctor\n", brand.Name, version())
 
 	r.section("State")
 	checkStateDir(r, dir)
