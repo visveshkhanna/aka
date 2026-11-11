@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,6 +16,8 @@ type RunArgs struct {
 	Force    bool
 	PortHint int
 	NoPreset bool
+	// Choose asks again which dev command to run (bare aka only).
+	Choose bool
 }
 
 // ParseRunArgs splits flags, the optional app name and the command.
@@ -54,6 +55,8 @@ flags:
 			ra.Force = true
 		case "--no-preset":
 			ra.NoPreset = true
+		case "--choose":
+			ra.Choose = true
 		case "--name", "-n":
 			v, err := needVal()
 			if err != nil {
@@ -92,9 +95,7 @@ flags:
 	} else {
 		ra.Command = rest
 	}
-	if len(ra.Command) == 0 {
-		return ra, fmt.Errorf("no command given. Usage: %s <name> <command...>", brand.Name)
-	}
+	// No command: a bare `aka` runs the project's dev command.
 	return ra, nil
 }
 
@@ -140,41 +141,6 @@ func ValidateName(name string) (string, error) {
 		}
 	}
 	return n, nil
-}
-
-// SanitizeName turns an arbitrary string (a directory name, a package name
-// like @scope/my_app) into a valid single DNS label, or "" if nothing is left.
-func SanitizeName(s string) string {
-	s = strings.ToLower(s)
-	if i := strings.LastIndex(s, "/"); i >= 0 { // @scope/pkg -> pkg
-		s = s[i+1:]
-	}
-	var b strings.Builder
-	dash := false
-	for _, r := range s {
-		ok := r >= 'a' && r <= 'z' || r >= '0' && r <= '9'
-		if ok {
-			b.WriteRune(r)
-			dash = false
-		} else if !dash && b.Len() > 0 {
-			b.WriteByte('-')
-			dash = true
-		}
-	}
-	out := strings.TrimRight(b.String(), "-")
-	if len(out) > 63 {
-		out = strings.TrimRight(out[:63], "-")
-	}
-	return out
-}
-
-// InferName is the MVP name inference: the current directory's name.
-// (Manifest-based inference across ecosystems is build step 4.)
-func InferName(cwd string) string {
-	if n := SanitizeName(filepath.Base(cwd)); n != "" {
-		return n
-	}
-	return "app"
 }
 
 // Hostname appends the TLD to a validated name.

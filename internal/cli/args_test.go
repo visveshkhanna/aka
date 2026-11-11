@@ -51,8 +51,9 @@ func TestParseRunArgs(t *testing.T) {
 		{"bin/dev is a command", []string{"bin/dev"}, RunArgs{Command: []string{"bin/dev"}}, ""},
 		{"unknown dash arg starts the command", []string{"-m", "http.server"},
 			RunArgs{Command: []string{"-m", "http.server"}}, ""},
-		{"name with no command", []string{"myapp", "--"}, RunArgs{}, "no command"},
-		{"nothing", []string{}, RunArgs{}, "no command"},
+		{"name with no command", []string{"myapp", "--"}, RunArgs{Name: "myapp", Command: []string{}}, ""},
+		{"nothing", []string{}, RunArgs{Command: []string{}}, ""},
+		{"flags only", []string{"--force", "--choose"}, RunArgs{Force: true, Choose: true, Command: []string{}}, ""},
 		{"--name without value", []string{"--name"}, RunArgs{}, "needs a value"},
 		{"bad port hint", []string{"--port-hint", "99999", "vite"}, RunArgs{}, "invalid port"},
 		{"name twice", []string{"--name", "a", "b", "--", "vite"}, RunArgs{}, "name given twice"},
@@ -100,26 +101,7 @@ func TestValidateName(t *testing.T) {
 	}
 }
 
-func TestSanitizeAndInferName(t *testing.T) {
-	cases := map[string]string{
-		"My_Project":            "my-project",
-		"@scope/web-app":        "web-app",
-		"  spaced  out  ":       "spaced-out",
-		"___":                   "",
-		"app.v2":                "app-v2",
-		strings.Repeat("a", 70): strings.Repeat("a", 63),
-	}
-	for in, want := range cases {
-		if got := SanitizeName(in); got != want {
-			t.Errorf("SanitizeName(%q) = %q, want %q", in, got, want)
-		}
-	}
-	if got := InferName("/home/me/code/My Site"); got != "my-site" {
-		t.Errorf("InferName = %q", got)
-	}
-	if got := InferName("/___"); got != "app" {
-		t.Errorf("InferName fallback = %q", got)
-	}
+func TestHostname(t *testing.T) {
 	if Hostname("web") != "web.localhost" {
 		t.Error(Hostname("web"))
 	}

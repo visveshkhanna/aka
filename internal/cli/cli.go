@@ -19,6 +19,7 @@ import (
 	"aka/internal/brand"
 	"aka/internal/daemon"
 	"aka/internal/presets"
+	"aka/internal/project"
 	"aka/internal/proxy"
 	"aka/internal/runner"
 )
@@ -31,8 +32,7 @@ const daemonCmd = "__daemon"
 // Main runs the CLI and returns the process exit code.
 func Main(args []string) int {
 	if len(args) == 0 {
-		usage(os.Stderr)
-		return 2
+		return cmdRun(nil) // bare aka: run the project's dev command
 	}
 	switch args[0] {
 	case "-h", "--help", "help":
@@ -62,6 +62,7 @@ func usage(w io.Writer) {
 	fmt.Fprintf(w, `%[1]s gives a local dev server a stable URL: https://<name>.localhost
 
 Usage:
+  %[1]s                            run this project's dev command (package.json, manage.py, ...)
   %[1]s <name> <command...>        run command, route <name>.localhost to it
   %[1]s <command...>               same, name inferred from the directory
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
@@ -75,6 +76,7 @@ Flags (before the name):
   --force, -f         take over a name another %[1]s is using
   --port-hint <port>  route to this port instead of detecting one
   --no-preset         do not add port flags or env for known frameworks
+  --choose            pick again which dev command a bare %[1]s runs
 
 The command gets PORT=<free port>, HOST=127.0.0.1 and %[3]s=<public url>.
 If it ignores PORT, %[1]s routes to whatever port it actually listens on.
@@ -141,13 +143,20 @@ func cmdRun(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	dir := cwd
+	command := ra.Command
+	if len(command) == 0 {
+		if dir, command, err = devCommand(cwd, ra.Choose); err != nil {
+			return fail(err)
+		}
+	}
 	var name string
 	if ra.Name != "" {
 		if name, err = ValidateName(ra.Name); err != nil {
 			return fail(err)
 		}
 	} else {
-		name = InferName(cwd)
+		name = project.InferName(dir).Name
 	}
 	so, err := startOptions()
 	if err != nil {
@@ -164,7 +173,8 @@ func cmdRun(args []string) int {
 	}
 	code, err := runner.Run(runner.Options{
 		Hostname: Hostname(name),
-		Args:     ra.Command,
+		Args:     command,
+		Dir:      dir,
 		Force:    ra.Force,
 		PortHint: ra.PortHint,
 		Daemon:   so,
