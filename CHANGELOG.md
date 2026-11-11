@@ -4,6 +4,10 @@ All notable changes to aka are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Changed
+
+- aka is licensed under the Apache License 2.0.
+
 ## [0.1.1] - 2026-11-11
 
 ### Fixed

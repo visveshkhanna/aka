@@ -23,7 +23,7 @@ for t in $targets; do
   CGO_ENABLED=0 GOOS=$os GOARCH=$arch GOARM=7 go build -trimpath \
     -ldflags "-s -w -X $module/internal/cli.Version=$version" \
     -o "$dir/$exe" ./cmd/aka
-  cp README.md NOTICE "$dir/"
+  cp README.md LICENSE NOTICE "$dir/"
   mkdir -p "$dir/third_party/portless"
   cp third_party/portless/LICENSE "$dir/third_party/portless/"
   if [ "$os" = windows ]; then

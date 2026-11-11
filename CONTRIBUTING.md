@@ -82,6 +82,10 @@ Releases follow [semantic versioning](https://semver.org). To publish one:
 
 The [release workflow](.github/workflows/release.yml) tests the tag, builds archives for macOS, Linux and Windows with [`.github/scripts/dist.sh`](.github/scripts/dist.sh), attests their build provenance, and publishes a GitHub release with that version's changelog section as its notes. A tag with a suffix, such as `v0.2.0-rc.1`, is published as a pre-release. Running the workflow by hand builds the archives without publishing.
 
+## License
+
+By contributing, you agree that your contributions are licensed under the [Apache License 2.0](LICENSE).
+
 ## Credits
 
 Parts of aka are translated from [portless](https://github.com/vercel-labs/portless) (Apache-2.0). Code adapted from it must keep its attribution; see [NOTICE](NOTICE).

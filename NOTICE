@@ -1,6 +1,10 @@
 aka
 ===
 
+Copyright 2026 Visvesh Khanna
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
 This project is a Go rewrite inspired by portless
 (https://github.com/vercel-labs/portless), Copyright Vercel Labs, licensed
 under the Apache License, Version 2.0. A copy of that license is in

@@ -152,4 +152,4 @@ aka follows the design of [portless](https://github.com/vercel-labs/portless) by
 
 ## License
 
-aka does not have a license of its own yet. Until it does, the code is not licensed for reuse. The portless-derived parts remain under the Apache License 2.0, as described in [NOTICE](NOTICE).
+[Apache License 2.0](LICENSE). Parts derived from portless keep their attribution in [NOTICE](NOTICE).
