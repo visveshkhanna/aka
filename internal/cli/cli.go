@@ -55,6 +55,8 @@ func Main(args []string) int {
 		return cmdUp(args[1:])
 	case "compose":
 		return cmdCompose(args[1:])
+	case "mcp":
+		return cmdMCP()
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -85,6 +87,7 @@ Usage:
   sudo %[1]s proxy start           also serve port 443 (root is dropped after binding)
   %[1]s trust | untrust            add or remove the local CA in the system trust store
   %[1]s doctor                     check the setup and explain what is wrong
+  %[1]s mcp                        MCP server on stdio, for AI coding agents
 
 Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
