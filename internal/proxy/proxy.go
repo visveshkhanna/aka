@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"aka/internal/brand"
@@ -54,6 +55,12 @@ type Server struct {
 	// TLD is the suffix used in help text on error pages.
 	TLD string
 	Log *log.Logger
+	// OnHint, if set, is called once per route and hint when an upstream
+	// response looks like the framework rejecting aka's Host or Origin.
+	OnHint func(rt Route, hint string)
+
+	hintMu sync.Mutex
+	hinted map[string]bool
 
 	rp *httputil.ReverseProxy
 }
@@ -207,12 +214,32 @@ func requestPort(r *http.Request) string {
 // not escape the proxy.
 func (s *Server) modifyResponse(resp *http.Response) error {
 	rt := routeFrom(resp.Request)
+	if s.OnHint != nil {
+		if hint := sniffRejection(resp); hint != "" {
+			s.hint(rt, hint)
+		}
+	}
 	if loc := resp.Header.Get("Location"); loc != "" {
 		if rewritten, ok := RewriteLocation(loc, rt.Port, requestScheme(resp.Request), resp.Request.Host); ok {
 			resp.Header.Set("Location", rewritten)
 		}
 	}
 	return nil
+}
+
+func (s *Server) hint(rt Route, hint string) {
+	key := rt.Hostname + "\x00" + hint
+	s.hintMu.Lock()
+	if s.hinted == nil {
+		s.hinted = map[string]bool{}
+	}
+	seen := s.hinted[key]
+	s.hinted[key] = true
+	s.hintMu.Unlock()
+	if !seen {
+		s.Log.Printf("%s: %s", rt.Hostname, hint)
+		s.OnHint(rt, hint)
+	}
 }
 
 // RewriteLocation rewrites an absolute Location URL that targets a loopback

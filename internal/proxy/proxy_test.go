@@ -57,6 +57,7 @@ type harness struct {
 	table *memTable
 	srv   *httptest.Server
 	addr  string
+	proxy *Server
 }
 
 func newHarness(t *testing.T) *harness {
@@ -67,7 +68,7 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(p)
 	t.Cleanup(srv.Close)
 	addr := strings.TrimPrefix(srv.URL, "http://")
-	return &harness{t: t, table: tb, srv: srv, addr: addr}
+	return &harness{t: t, table: tb, srv: srv, addr: addr, proxy: p}
 }
 
 func (h *harness) do(method, host, path string, hdr map[string]string, body io.Reader) *http.Response {
