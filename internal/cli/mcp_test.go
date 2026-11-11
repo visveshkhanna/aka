@@ -37,7 +37,7 @@ func TestMCPTools(t *testing.T) {
 		var resp struct {
 			Result struct {
 				Content []struct{ Text string } `json:"content"`
-				IsError bool                     `json:"isError"`
+				IsError bool                    `json:"isError"`
 			} `json:"result"`
 		}
 		sc := bufio.NewScanner(strings.NewReader(out.String()))

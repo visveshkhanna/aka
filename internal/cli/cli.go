@@ -57,6 +57,8 @@ func Main(args []string) int {
 		return cmdCompose(args[1:])
 	case "mcp":
 		return cmdMCP()
+	case "service":
+		return cmdService(args[1:])
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -88,6 +90,7 @@ Usage:
   %[1]s trust | untrust            add or remove the local CA in the system trust store
   %[1]s doctor                     check the setup and explain what is wrong
   %[1]s mcp                        MCP server on stdio, for AI coding agents
+  %[1]s service install|uninstall|status   start the proxy at login
 
 Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
