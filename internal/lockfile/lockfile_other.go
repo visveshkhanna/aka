@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// lock on Windows relies on exclusive file creation semantics. Proper
-// LockFileEx support is part of the Windows build step.
+// lock is the fallback for platforms with neither flock nor LockFileEx: it
+// retries opening the file until it succeeds.
 func lock(path string, block bool) (func(), error) {
 	for {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)

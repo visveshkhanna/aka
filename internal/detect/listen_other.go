@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-// Windows (GetExtendedTcpTable) is build step 5. Until then, detection is
+// Detection is implemented for macOS, Linux and Windows. Elsewhere it is
 // unavailable and routing relies on the assigned PORT and stdout hints.
 var errUnsupported = errors.New("listener detection is not supported on " + runtime.GOOS + " yet")
 
