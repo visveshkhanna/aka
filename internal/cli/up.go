@@ -108,6 +108,7 @@ func up(f *config.File, names []string) int {
 			codes[i] = 1
 			continue
 		}
+		upTrack(cmd.Process)
 		mu.Lock()
 		procs = append(procs, cmd.Process)
 		mu.Unlock()

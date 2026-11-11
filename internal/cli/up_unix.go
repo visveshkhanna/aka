@@ -18,3 +18,7 @@ func upIsolate(cmd *exec.Cmd) {
 }
 
 func upForward(p *os.Process, sig os.Signal) { p.Signal(sig) }
+
+// upTrack has nothing to do: Ctrl+C and kill reach each app's aka through
+// upForward.
+func upTrack(*os.Process) {}
