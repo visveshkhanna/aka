@@ -1,0 +1,227 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Run gofmt -w on:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go mod tidy
+        run: go mod tidy -diff
+
+      - name: go vet (every OS)
+        run: |
+          for os in linux darwin windows freebsd; do
+            echo "== $os"
+            GOOS=$os go vet ./...
+            GOOS=$os go vet -tags e2e ./e2e
+          done
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: shellcheck
+        run: shellcheck -x .github/scripts/*.sh
+
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color
+
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x64, os: ubuntu-latest, race: true }
+          - { name: Linux arm64, os: ubuntu-24.04-arm, race: true }
+          - { name: macOS arm64, os: macos-latest, race: true }
+          - { name: macOS x64, os: macos-15-intel, race: true }
+          - { name: Windows x64, os: windows-latest, race: true }
+          # The race detector does not support windows/arm64.
+          - { name: Windows arm64, os: windows-11-arm, race: false }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # The end-to-end test runs real Node and Python dev servers.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Unit tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.race }}" = true ]; then
+            go test -race -count=1 ./...
+          else
+            go test -count=1 ./...
+          fi
+
+      - name: End-to-end test
+        shell: bash
+        run: go test -tags e2e -count=1 -v ./e2e
+
+  build:
+    name: Release build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build every release target
+        run: .github/scripts/dist.sh "v0.0.0-ci.${GITHUB_SHA::7}" dist
+
+      - name: Also compile for FreeBSD and 32-bit Linux
+        run: |
+          for t in freebsd/amd64 freebsd/arm64 linux/386; do
+            CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -o /dev/null ./cmd/aka
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  linux-trust:
+    name: Trust store (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:24.04
+          - ubuntu:22.04
+          - debian:12
+          - fedora:latest
+          - rockylinux:9
+          - alpine:latest
+          - archlinux:latest
+          - opensuse/tumbleweed
+        include:
+          # Also run the unit tests as root in a few, which covers the
+          # privilege drop behind `sudo aka proxy start`.
+          - { image: ubuntu:24.04, root-tests: true }
+          - { image: alpine:latest, root-tests: true }
+          - { image: fedora:latest, root-tests: true }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build static binaries
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p out/tests
+          go build -o out/aka ./cmd/aka
+          go test -c -o out/tests/ ./...
+
+      - name: aka trust and untrust as root
+        run: |
+          docker run --rm -v "$PWD/out:/out:ro" -v "$PWD/.github/scripts:/s:ro" "${{ matrix.image }}" \
+            sh -c 'sh /s/distro-deps.sh && sh /s/linux-trust.sh /out/aka'
+
+      - name: Unit tests as root
+        if: matrix.root-tests
+        run: |
+          docker run --rm -v "$PWD/out:/out:ro" "${{ matrix.image }}" \
+            sh -c 'cd /tmp && for t in /out/tests/*.test; do echo "== $t"; "$t" || exit 1; done'
+
+  sudo-https:
+    name: sudo aka proxy start (port 443)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - run: go build -o bin/aka ./cmd/aka
+
+      - run: .github/scripts/sudo-https.sh bin/aka
+
+  service:
+    name: Login service (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: launchd, os: macos-latest }
+          - { name: systemd, os: ubuntu-latest }
+          - { name: Windows Run key, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        shell: bash
+        run: |
+          exe=bin/aka
+          if [ "$RUNNER_OS" = Windows ]; then exe=bin/aka.exe; fi
+          go build -o "$exe" ./cmd/aka
+          echo "AKA_BIN=$exe" >> "$GITHUB_ENV"
+
+      # The runner is not a login session, so start a user manager for it.
+      - name: Start a systemd user manager
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          uid=$(id -u)
+          for _ in $(seq 40); do [ -S "/run/user/$uid/bus" ] && break; sleep 0.5; done
+          echo "XDG_RUNTIME_DIR=/run/user/$uid" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus" >> "$GITHUB_ENV"
+
+      - name: Install, check and uninstall the service
+        shell: bash
+        run: .github/scripts/service.sh "$AKA_BIN"
