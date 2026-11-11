@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 // ErrUnsupported is returned where no service manager is supported.

@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // isTrusted asks the platform verifier (CertGetCertificateChain via Go's

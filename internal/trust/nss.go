@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // nssDBs lists NSS certificate databases under home: Chrome/Chromium's on

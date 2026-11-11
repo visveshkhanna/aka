@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"aka/internal/certs"
-	"aka/internal/lockfile"
-	"aka/internal/netx"
-	"aka/internal/ports"
-	"aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/lockfile"
+	"github.com/visveshkhanna/aka/internal/netx"
+	"github.com/visveshkhanna/aka/internal/ports"
+	"github.com/visveshkhanna/aka/internal/proxy"
 )
 
 // Config configures a daemon.

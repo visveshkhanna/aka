@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/proxy"
 )
 
 // An alias is a static route to a port aka did not start (a Docker

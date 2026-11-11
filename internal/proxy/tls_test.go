@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // tlsHarness serves the proxy on one port that speaks both HTTP and HTTPS,

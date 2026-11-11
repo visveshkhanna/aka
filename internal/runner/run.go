@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/certs"
-	"aka/internal/daemon"
-	"aka/internal/detect"
-	"aka/internal/presets"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/presets"
 )
 
 // Options configures a run.

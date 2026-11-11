@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"aka/internal/brand"
-	"aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/proxy"
 )
 
 // Ops understood by the daemon.

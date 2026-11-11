@@ -15,9 +15,9 @@ import (
 
 	"golang.org/x/term"
 
-	"aka/internal/config"
-	"aka/internal/daemon"
-	"aka/internal/presets"
+	"github.com/visveshkhanna/aka/internal/config"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/presets"
 )
 
 // cmdUp runs the apps of aka.toml together: `aka up` for all of them,

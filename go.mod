@@ -1,4 +1,4 @@
-module aka
+module github.com/visveshkhanna/aka
 
 go 1.26.2
 

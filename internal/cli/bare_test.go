@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/project"
+	"github.com/visveshkhanna/aka/internal/project"
 )
 
 func TestDevCommand(t *testing.T) {

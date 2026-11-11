@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"aka/internal/brand"
-	"aka/internal/daemon"
-	"aka/internal/mcp"
-	"aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/mcp"
+	"github.com/visveshkhanna/aka/internal/proxy"
 )
 
 // cmdMCP serves aka's tools to an MCP client over stdio, e.g.

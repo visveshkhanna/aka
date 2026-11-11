@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 // Conn is a client connection to the daemon.

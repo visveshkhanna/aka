@@ -17,16 +17,16 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/config"
-	"aka/internal/daemon"
-	"aka/internal/presets"
-	"aka/internal/project"
-	"aka/internal/proxy"
-	"aka/internal/runner"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/config"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/presets"
+	"github.com/visveshkhanna/aka/internal/project"
+	"github.com/visveshkhanna/aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/runner"
 )
 
-// Version is set at build time with -ldflags "-X aka/internal/cli.Version=...".
+// Version is set at build time with -ldflags "-X github.com/visveshkhanna/aka/internal/cli.Version=...".
 var Version = "dev"
 
 const daemonCmd = "__daemon"

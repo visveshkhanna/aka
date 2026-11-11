@@ -16,8 +16,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"aka/internal/brand"
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // ErrUnsupported is returned on platforms without trust store support yet.

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"aka/internal/project"
+	"github.com/visveshkhanna/aka/internal/project"
 )
 
 // Service is a running service and the host ports it publishes.

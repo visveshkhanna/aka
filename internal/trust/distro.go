@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"aka/internal/brand"
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // distro is where a Linux family keeps extra CA anchors and how it rebuilds

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/daemon"
 )
 
 // TestMain lets the test binary act as aka itself (AKA_TEST_MAIN=1), so

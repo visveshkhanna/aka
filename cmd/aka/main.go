@@ -4,7 +4,7 @@ package main
 import (
 	"os"
 
-	"aka/internal/cli"
+	"github.com/visveshkhanna/aka/internal/cli"
 )
 
 func main() { os.Exit(cli.Main(os.Args[1:])) }

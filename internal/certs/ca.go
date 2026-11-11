@@ -30,8 +30,8 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/lockfile"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/lockfile"
 )
 
 // File names in the state directory.

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"aka/internal/brand"
-	"aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/daemon"
 )
 
 // cmdAlias manages static routes:

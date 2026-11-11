@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/term"
 
-	"aka/internal/brand"
-	"aka/internal/project"
-	"aka/internal/runner"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/project"
+	"github.com/visveshkhanna/aka/internal/runner"
 )
 
 // devCommand works out what a bare `aka` runs: the command remembered for

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/detect"
 )
 
 // spawnChild starts a long sleep in its own process group, as the runner

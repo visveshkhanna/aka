@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 type pageKind int

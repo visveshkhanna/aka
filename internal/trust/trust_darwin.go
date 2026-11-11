@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 func isTrusted(ca *certs.CA) bool { return verifiesWithSystemRoots(ca) }

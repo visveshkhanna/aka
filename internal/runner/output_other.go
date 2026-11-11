@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/detect"
 )
 
 // Windows: plain pipes until ConPTY support lands with the Windows step.

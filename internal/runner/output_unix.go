@@ -14,8 +14,8 @@ import (
 	"github.com/creack/pty"
 	"golang.org/x/term"
 
-	"aka/internal/brand"
-	"aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/detect"
 )
 
 // output tees the child's stdout and stderr to ours while scanning them for

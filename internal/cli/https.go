@@ -12,11 +12,11 @@ import (
 
 	"golang.org/x/term"
 
-	"aka/internal/brand"
-	"aka/internal/certs"
-	"aka/internal/daemon"
-	"aka/internal/privdrop"
-	"aka/internal/trust"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/privdrop"
+	"github.com/visveshkhanna/aka/internal/trust"
 )
 
 // httpsEnabled reports whether HTTPS is on. It is unless AKA_HTTPS is set

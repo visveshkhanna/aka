@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/daemon"
 )
 
 func TestDoctor(t *testing.T) {

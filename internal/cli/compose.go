@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/compose"
-	"aka/internal/daemon"
-	"aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/compose"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/detect"
 )
 
 // composePoll is how often `docker compose ps` is read.

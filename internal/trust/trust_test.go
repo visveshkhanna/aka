@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 func TestDetectDistro(t *testing.T) {

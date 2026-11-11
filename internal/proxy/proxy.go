@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/netx"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/netx"
 )
 
 // Route maps a hostname to a local upstream port.

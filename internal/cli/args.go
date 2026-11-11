@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 // RunArgs is a parsed `aka [flags] [name] <command...>` invocation.

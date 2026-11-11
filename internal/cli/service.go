@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/daemon"
-	"aka/internal/service"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/service"
 )
 
 // cmdService manages the login service that starts the proxy:

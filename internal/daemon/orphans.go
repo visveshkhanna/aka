@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"aka/internal/detect"
+	"github.com/visveshkhanna/aka/internal/detect"
 )
 
 // orphanGrace is how long orphans get to exit after SIGTERM before SIGKILL.

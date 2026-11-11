@@ -4,7 +4,7 @@ import (
 	"errors"
 	"os"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 // isTrusted checks the system bundle that TLS clients (Go, OpenSSL, curl)

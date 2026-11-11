@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 // Worktree is a hostname prefix for a linked git worktree.

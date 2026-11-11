@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/daemon"
-	"aka/internal/presets"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/presets"
 )
 
 // TestMain doubles as the child app for the end-to-end tests. Modes:

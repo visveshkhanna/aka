@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/daemon"
 )
 
 func TestMCPTools(t *testing.T) {

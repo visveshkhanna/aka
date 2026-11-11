@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/brand"
 )
 
 // FileName is the project file's name.

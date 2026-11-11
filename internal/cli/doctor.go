@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/certs"
-	"aka/internal/daemon"
-	"aka/internal/presets"
-	"aka/internal/project"
-	"aka/internal/proxy"
-	"aka/internal/runner"
-	"aka/internal/trust"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/presets"
+	"github.com/visveshkhanna/aka/internal/project"
+	"github.com/visveshkhanna/aka/internal/proxy"
+	"github.com/visveshkhanna/aka/internal/runner"
+	"github.com/visveshkhanna/aka/internal/trust"
 )
 
 // report prints doctor results: one line per check, with a fix under any

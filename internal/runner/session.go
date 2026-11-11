@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"aka/internal/brand"
-	"aka/internal/daemon"
+	"github.com/visveshkhanna/aka/internal/brand"
+	"github.com/visveshkhanna/aka/internal/daemon"
 )
 
 // ConflictError means the hostname is owned by another running aka.

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"aka/internal/certs"
+	"github.com/visveshkhanna/aka/internal/certs"
 )
 
 func startTLSDaemon(t *testing.T, cfg Config) (*Server, string) {
