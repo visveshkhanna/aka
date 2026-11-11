@@ -173,8 +173,14 @@ func start(o StartOptions) (Response, error) {
 			return r, nil
 		}
 		select {
-		case <-exited:
-			// Lost a race with another starter? Its daemon will answer.
+		case err := <-exited:
+			if err == nil {
+				// It exits 0 only when another daemon holds the lock: we lost
+				// a race with another starter, whose daemon may still be
+				// binding its socket. Keep waiting for that one.
+				exited = nil
+				continue
+			}
 			if r, err := Ping(o.StateDir); err == nil {
 				return r, nil
 			}
