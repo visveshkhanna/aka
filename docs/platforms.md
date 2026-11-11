@@ -1,0 +1,35 @@
+# Platforms
+
+aka runs on macOS, Linux and Windows 10 1803 or later, on x64 and arm64 (and 32-bit ARM Linux). CI runs the unit tests and an end-to-end test with real Node and Python servers on all six x64 and arm64 combinations, and checks the login service on each system.
+
+## macOS
+
+- **Port detection** reads listening sockets with `lsof`, which every macOS install has.
+- **Trust** goes into the login keychain. macOS asks you to confirm.
+- **Port 443** needs `sudo aka proxy start` (binding loopback addresses below 1024 is privileged), otherwise URLs carry `:1355`.
+- **Login service**: a launchd agent in `~/Library/LaunchAgents`.
+
+## Linux
+
+- **Port detection** reads `/proc`.
+- **Trust** copies the CA into the distribution's anchor directory and rebuilds the system bundle with `sudo`. This is tested on Ubuntu 24.04 and 22.04, Debian, Fedora, Rocky Linux, Alpine, Arch and openSUSE. Firefox and Chrome keep their own NSS databases, which aka updates when `certutil` is installed (`libnss3-tools` or `nss-tools`).
+- **Port 443** needs `sudo aka proxy start`, or `setcap cap_net_bind_service=+ep` on the binary.
+- **Login service**: a systemd user unit in `~/.config/systemd/user`.
+
+## Windows
+
+- **Port detection** reads the process table from a Toolhelp32 snapshot and listening sockets from `GetExtendedTcpTable`.
+- **Stopping apps**: the app shares aka's console, so Ctrl+C reaches it directly, as without aka. aka also keeps each app in a job object, so a takeover, a third Ctrl+C, or aka itself exiting stops the whole process tree. `aka up` does the same for all of its apps.
+- **Trust** goes into the current user's Root store. Windows asks you to confirm; no administrator rights are needed.
+- **Port 443** needs no privileges, so URLs have no port unless something else holds 443.
+- **Shell syntax** in `aka.toml` commands runs through `cmd /c`, which understands `&&`, `|` and `>`, but uses `%VAR%` rather than `$VAR`.
+- **Login service**: a value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Unlike launchd and systemd, it does not restart a crashed proxy; the next app does.
+- **Name resolution**: browsers and curl resolve `*.localhost` by themselves, but the Windows resolver does not. Code that calls another app (Node, Python and similar) needs a hosts-file entry such as `127.0.0.1 api.localhost`.
+- **Output** goes through pipes, not a pseudo-console, so some tools turn off colours.
+
+## Known limits
+
+- `kill -9` on `aka up` itself, on macOS or Linux, leaves its apps running. Ctrl+C, closing the terminal and a plain `kill` stop them.
+- Ctrl+Z suspends aka but not the app.
+- A dev server that serves HTTPS itself cannot be proxied; see [HTTPS](https.md#framework-settings).
+- Python `requests` and Java use their own CA bundles; see [HTTPS](https.md#trusting-it).

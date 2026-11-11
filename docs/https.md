@@ -1,0 +1,58 @@
+# HTTPS
+
+aka serves every app over HTTPS, with HTTP/2, on the same port as plain HTTP (1355 by default). It tells the two apart by the first byte of each connection.
+
+## The local certificate authority
+
+On first use, aka creates a certificate authority in `~/.aka` (`ca.pem` and `ca-key.pem`, readable only by you). During each TLS handshake it issues a 30-day certificate for the requested hostname, and renews it before it expires.
+
+The CA is **name-constrained**: it can only sign `localhost`, `*.localhost` and loopback addresses (`127.0.0.0/8` and `::1`). Even if its key leaked, it could not be used to impersonate any other site.
+
+## Trusting it
+
+The first HTTPS run in a terminal offers to add the CA to the system trust store. You can also do it yourself, and undo it:
+
+```bash
+aka trust
+aka untrust
+```
+
+| Where | How the CA is trusted |
+|---|---|
+| macOS | the login keychain, after you confirm (Safari, Chrome, curl, Go) |
+| Linux | the distribution's anchor directory and `update-ca-certificates` or `update-ca-trust`, with `sudo` (Debian, Ubuntu, Alpine, Fedora, RHEL, Rocky, Arch, openSUSE) |
+| Windows | the current user's Root store, after you confirm; no administrator rights |
+| Firefox, and Chrome on Linux | their NSS databases, if `certutil` is installed |
+| Node | `NODE_EXTRA_CA_CERTS` is set for each app, so server-side `fetch` to another `*.localhost` app works |
+
+`aka doctor` reports whether the system and each NSS database trust the CA.
+
+Some clients use their own CA bundle and do not read the system store: Python's `requests` (through `certifi`) and Java, for example. Point them at `~/.aka/ca.pem` (`REQUESTS_CA_BUNDLE`, or a Java trust store) when one app calls another over HTTPS.
+
+## Port 443
+
+To serve `https://myapp.localhost` without a port, aka also tries to listen on port 443. That needs privileges on macOS (for loopback addresses) and on Linux. Without them, HTTPS is served on port 1355 and the URL carries the port. To bind 443:
+
+```bash
+sudo aka proxy start     # binds 443, then drops root and runs as you
+```
+
+aka binds the port as root, drops to the user who ran `sudo`, and starts the proxy as that user with the bound socket. Nothing else runs as root, and its files stay yours.
+
+On Linux, you can instead allow the binary to bind low ports: `sudo setcap cap_net_bind_service=+ep "$(command -v aka)"`. On Windows, port 443 needs no privileges, so URLs have no port unless something else holds 443.
+
+`AKA_HTTPS_PORT` chooses another dedicated port (`0` for none), and `AKA_HTTPS=0` turns HTTPS off for plain `http://<name>.localhost:1355`.
+
+## Framework settings
+
+Behind the proxy, the app itself speaks plain HTTP. aka sets `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Port` and `X-Forwarded-For` on every request so it can tell.
+
+- **Django** builds CSRF origins from the scheme it sees, so POSTs (the admin login, for one) fail with "Origin checking failed". Add this to the development settings:
+
+  ```python
+  SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+  ```
+
+- **uvicorn, Starlette, FastAPI, Rails**, and **Express** with `trust proxy`, read `X-Forwarded-Proto` themselves, so redirects use `https`.
+- **WebSockets**, such as hot reload in Vite or Angular, are proxied too, over `wss://` when the page is HTTPS.
+- A dev server that serves HTTPS itself (`ng serve --ssl`, `vite --https`) cannot be proxied; let aka handle TLS instead.
