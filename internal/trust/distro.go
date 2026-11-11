@@ -2,7 +2,9 @@ package trust
 
 import (
 	"bytes"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,9 +73,38 @@ func anchorPath(d distro) string {
 	return filepath.Join(d.CertDir, brand.Name+"-local-ca.crt")
 }
 
-func anchorInstalled(ca *certs.CA, d distro) bool {
-	b, err := os.ReadFile(anchorPath(d))
-	return err == nil && bytes.Equal(bytes.TrimSpace(b), bytes.TrimSpace(ca.CertPEM))
+// systemBundles are the compiled CA bundles of the common distro families,
+// the same files Go's crypto/x509 reads on Linux.
+var systemBundles = []string{
+	"/etc/ssl/certs/ca-certificates.crt",                // Debian, Ubuntu, Alpine, Arch
+	"/etc/pki/tls/certs/ca-bundle.crt",                  // Fedora, RHEL
+	"/etc/ssl/ca-bundle.pem",                            // openSUSE
+	"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // Fedora, RHEL (extracted)
+}
+
+// bundleContains reports whether any bundle file holds ca's certificate.
+func bundleContains(paths []string, ca *certs.CA) bool {
+	for _, p := range paths {
+		rest, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		for {
+			var block *pem.Block
+			block, rest = pem.Decode(rest)
+			if block == nil {
+				break
+			}
+			if block.Type == "CERTIFICATE" && bytes.Equal(block.Bytes, ca.Cert.Raw) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func errNoUpdateTool(d distro) error {
+	return fmt.Errorf("%s is not installed, so the system CA bundle cannot be rebuilt; install the ca-certificates package and run this again", d.Update)
 }
 
 func errUnknownDistro() error {

@@ -47,25 +47,26 @@ func TestDetectDistro(t *testing.T) {
 	}
 }
 
-func TestAnchorInstalled(t *testing.T) {
+func TestBundleContains(t *testing.T) {
 	ca, _, err := certs.LoadOrCreateCA(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := distro{Name: "test", CertDir: t.TempDir(), Update: "true"}
-	if anchorInstalled(ca, d) {
-		t.Fatal("installed before copying")
-	}
-	if !strings.HasSuffix(anchorPath(d), ".crt") {
-		t.Fatalf("anchor %s must end in .crt for update-ca-certificates", anchorPath(d))
-	}
-	os.WriteFile(anchorPath(d), append(ca.CertPEM, '\n'), 0o644)
-	if !anchorInstalled(ca, d) {
-		t.Fatal("not detected after copying")
-	}
 	other, _, _ := certs.LoadOrCreateCA(t.TempDir())
-	if anchorInstalled(other, d) {
-		t.Fatal("a different CA matched the installed anchor")
+	dir := t.TempDir()
+	bundle := filepath.Join(dir, "ca-certificates.crt")
+	missing := filepath.Join(dir, "missing.crt")
+	os.WriteFile(bundle, other.CertPEM, 0o644)
+	if bundleContains([]string{missing, bundle}, ca) {
+		t.Fatal("found a CA that is not in the bundle")
+	}
+	// Bundles are many PEM blocks, sometimes with comments between them.
+	os.WriteFile(bundle, append(append(append([]byte("# a comment\n"), other.CertPEM...), "\n# ours\n"...), ca.CertPEM...), 0o644)
+	if !bundleContains([]string{missing, bundle}, ca) {
+		t.Fatal("CA in the bundle was not found")
+	}
+	if !strings.HasSuffix(anchorPath(debian), ".crt") {
+		t.Fatalf("anchor %s must end in .crt for update-ca-certificates", anchorPath(debian))
 	}
 }
 
