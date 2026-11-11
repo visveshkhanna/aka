@@ -203,15 +203,17 @@ jobs:
           go build -o out/aka ./cmd/aka
           go test -c -o out/tests/ ./...
 
+      # --network host: containers then use the runner's resolver, instead
+      # of Docker's fallback DNS, which has failed for some distro mirrors.
       - name: aka trust and untrust as root
         run: |
-          docker run --rm -v "$PWD/out:/out:ro" -v "$PWD/.github/scripts:/s:ro" "${{ matrix.image }}" \
+          docker run --rm --network host -v "$PWD/out:/out:ro" -v "$PWD/.github/scripts:/s:ro" "${{ matrix.image }}" \
             sh -c 'sh /s/distro-deps.sh && sh /s/linux-trust.sh /out/aka'
 
       - name: Unit tests as root
         if: matrix.root-tests
         run: |
-          docker run --rm -v "$PWD/out:/out:ro" "${{ matrix.image }}" \
+          docker run --rm --network host -v "$PWD/out:/out:ro" "${{ matrix.image }}" \
             sh -c 'cd /tmp && for t in /out/tests/*.test; do echo "== $t"; "$t" || exit 1; done'
 
   sudo-https:
