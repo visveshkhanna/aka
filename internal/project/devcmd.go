@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -192,9 +193,14 @@ func pythonRunner(d string, env Env) []string {
 		return []string{"poetry", "run", "python"}
 	}
 	for _, venv := range []string{".venv", "venv"} {
-		if p := filepath.Join(venv, "bin", "python"); has(p) {
-			return []string{p}
+		for _, p := range []string{filepath.Join(venv, "bin", "python"), filepath.Join(venv, "Scripts", "python.exe")} {
+			if has(p) {
+				return []string{p}
+			}
 		}
+	}
+	if runtime.GOOS == "windows" && env.LookPath("py") {
+		return []string{"py"} // the Python launcher
 	}
 	if env.LookPath("python3") {
 		return []string{"python3"}
