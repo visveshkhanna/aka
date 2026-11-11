@@ -8,6 +8,14 @@ updates:
       go:
         patterns: ["*"]
 
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+    groups:
+      docs:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

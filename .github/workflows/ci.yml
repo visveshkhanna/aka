@@ -113,6 +113,33 @@ jobs:
             echo "::error title=${{ matrix.name }}: $f::$msg"
           done
 
+  docs:
+    name: Docs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run types:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Check links
+        run: npm run check-links
+
   build:
     name: Release build
     runs-on: ubuntu-latest
