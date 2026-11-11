@@ -162,6 +162,10 @@ func cmdRun(args []string) int {
 		}
 	} else {
 		name = project.InferName(dir).Name
+		if w, ok := project.WorktreePrefix(dir); ok {
+			name = w.Prefix + "." + name // a second checkout gets its own URL
+			notice("worktree prefix %q (from %s; %s= to turn off)", w.Prefix, w.Source, brand.Env("PREFIX"))
+		}
 	}
 	so, err := startOptions()
 	if err != nil {
