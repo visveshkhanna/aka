@@ -1,0 +1,148 @@
+{
+  "wrappers": [
+    {"commands": ["npx"], "valueFlags": ["-p", "--package", "-c", "--call", "-w", "--workspace"]},
+    {"commands": ["bunx"]},
+    {"commands": ["pnpx"], "valueFlags": ["-p", "--package"]},
+    {"commands": ["pnpm"], "subcommands": ["exec", "dlx"], "valueFlags": ["-C", "--dir", "--filter", "-F"]},
+    {"commands": ["yarn"], "subcommands": ["exec", "dlx"], "valueFlags": ["--cwd"]},
+    {"commands": ["npm"], "subcommands": ["exec", "x"], "valueFlags": ["-c", "--call", "--package", "-w", "--workspace", "--prefix"], "separatorRequired": true},
+    {"commands": ["bun"], "subcommands": ["x"]},
+    {"commands": ["poetry"], "subcommands": ["run"], "valueFlags": ["-C", "--directory", "-P", "--project"]},
+    {"commands": ["uv"], "subcommands": ["run"], "valueFlags": ["--with", "--with-editable", "--with-requirements", "-p", "--python", "--project", "--directory", "--package", "--extra", "--group", "--only-group", "--env-file", "--index", "--default-index", "--from", "-w"]},
+    {"commands": ["uvx"], "valueFlags": ["--from", "--with", "-p", "--python", "--index"]},
+    {"commands": ["pipx"], "subcommands": ["run"], "valueFlags": ["--spec", "--python"]},
+    {"commands": ["pipenv"], "subcommands": ["run"]},
+    {"commands": ["pdm"], "subcommands": ["run"], "valueFlags": ["-p", "--project"]},
+    {"commands": ["hatch"], "subcommands": ["run"], "valueFlags": ["-e", "--env"]},
+    {"commands": ["rye"], "subcommands": ["run"]},
+    {"commands": ["bundle", "bundler"], "subcommands": ["exec"]},
+    {"commands": ["cross-env", "env"], "skipAssignments": true},
+    {"commands": ["python", "python3", "py", "pypy", "pypy3"], "interpreter": true, "moduleFlag": "-m", "valueFlags": ["-X", "-W", "-Q"], "stopFlags": ["-c"]},
+    {"commands": ["php"], "interpreter": true, "valueFlags": ["-d", "-c", "-z"], "stopFlags": ["-S", "-r", "-a"]},
+    {"commands": ["ruby"], "interpreter": true, "valueFlags": ["-r", "-I", "-E"], "stopFlags": ["-e"]}
+  ],
+  "presets": [
+    {"name": "angular", "commands": ["ng"],
+     "server": {"subcommands": ["serve", "s", "dev"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "vite", "commands": ["vite"],
+     "server": {"subcommands": ["dev", "serve", "preview"], "nonServer": ["build", "optimize"], "default": true, "positionalRoot": true},
+     "valueFlags": ["--assetsDir", "--assetsInlineLimit", "--base", "--configLoader", "--host", "--manifest", "--minify", "--open", "--outDir", "--port", "--sourcemap", "--ssr", "--ssrManifest", "--target", "-c", "--config", "-d", "--debug", "-f", "--filter", "-l", "--logLevel", "-m", "--mode"],
+     "inject": [{"flags": ["--port", "{port}", "--strictPort"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "vitepress", "commands": ["vitepress"],
+     "server": {"subcommands": ["dev", "serve", "preview"], "nonServer": ["build", "init"], "default": true},
+     "inject": [{"flags": ["--port", "{port}", "--strictPort"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "react-router", "commands": ["react-router"],
+     "server": {"subcommands": ["dev"]},
+     "inject": [{"flags": ["--port", "{port}", "--strictPort"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "rsbuild", "commands": ["rsbuild"],
+     "server": {"subcommands": ["dev", "preview"], "default": true},
+     "valueFlags": ["--base", "--config-loader", "--dist-path", "--env-dir", "--env-mode", "--environment", "--host", "--log-level", "--output", "--port", "-c", "--config", "-m", "--mode", "-o", "--open", "-r", "--root"],
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "astro", "commands": ["astro"],
+     "server": {"subcommands": ["dev", "preview"]},
+     "valueFlags": ["--base", "--config", "--host", "--mode", "--open", "--outDir", "--port", "--root", "--site"],
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "react-native", "commands": ["react-native"],
+     "server": {"subcommands": ["start"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "expo", "commands": ["expo"],
+     "server": {"subcommands": ["start", "serve"], "default": true},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "localhost"], "unless": ["--host", "--localhost", "--lan", "--tunnel"]}]},
+
+    {"name": "wrangler", "commands": ["wrangler"],
+     "server": {"subcommands": ["dev"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--ip", "127.0.0.1"], "unless": ["--ip"]}]},
+
+    {"name": "django", "commands": ["manage.py", "django-admin", "django"],
+     "server": {"subcommands": ["runserver", "runserver_plus"]},
+     "valueFlags": ["--settings", "--pythonpath", "-v", "--verbosity"],
+     "inject": [{"positional": "127.0.0.1:{port}"}]},
+
+    {"name": "uvicorn", "commands": ["uvicorn"],
+     "server": {"any": true},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port", "--fd", "--uds"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host", "--fd", "--uds"]}]},
+
+    {"name": "fastapi", "commands": ["fastapi"],
+     "server": {"subcommands": ["dev", "run"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "gunicorn", "commands": ["gunicorn"],
+     "server": {"any": true},
+     "inject": [{"flags": ["-b", "127.0.0.1:{port}"], "unless": ["-b", "--bind"]}]},
+
+    {"name": "flask", "commands": ["flask"],
+     "env": {"FLASK_RUN_PORT": "{port}", "FLASK_RUN_HOST": "127.0.0.1"}},
+
+    {"name": "streamlit", "commands": ["streamlit"],
+     "env": {"STREAMLIT_SERVER_PORT": "{port}", "STREAMLIT_SERVER_ADDRESS": "127.0.0.1", "STREAMLIT_SERVER_HEADLESS": "true"}},
+
+    {"name": "jupyter", "commands": ["jupyter", "jupyter-lab", "jupyter-notebook"],
+     "server": {"subcommands": ["lab", "notebook", "server"], "commandIsServer": ["jupyter-lab", "jupyter-notebook"]},
+     "inject": [{"flags": ["--port={port}"], "unless": ["--port", "--ServerApp.port"]},
+                {"flags": ["--no-browser"], "unless": ["--no-browser"]}]},
+
+    {"name": "gradio", "commands": ["gradio"], "via": ["python", "python3", "py"],
+     "env": {"GRADIO_SERVER_PORT": "{port}", "GRADIO_SERVER_NAME": "127.0.0.1"}},
+
+    {"name": "mkdocs", "commands": ["mkdocs"],
+     "server": {"subcommands": ["serve"]},
+     "inject": [{"flags": ["-a", "127.0.0.1:{port}"], "unless": ["-a", "--dev-addr"]}]},
+
+    {"name": "http.server", "commands": ["http.server"],
+     "server": {"any": true},
+     "valueFlags": ["-b", "--bind", "-d", "--directory", "-p", "--protocol"],
+     "inject": [{"positional": "{port}"},
+                {"flags": ["--bind", "127.0.0.1"], "unless": ["-b", "--bind"]}]},
+
+    {"name": "rails", "commands": ["rails"],
+     "server": {"subcommands": ["s", "server"]},
+     "inject": [{"flags": ["-p", "{port}"], "unless": ["-p", "--port"]},
+                {"flags": ["-b", "127.0.0.1"], "unless": ["-b", "--binding"]}]},
+
+    {"name": "php", "commands": ["php"],
+     "inject": [{"flagValue": "-S", "value": "127.0.0.1:{port}"}]},
+
+    {"name": "laravel", "commands": ["artisan"],
+     "server": {"subcommands": ["serve"]},
+     "inject": [{"flags": ["--port={port}"], "unless": ["--port"]},
+                {"flags": ["--host=127.0.0.1"], "unless": ["--host"]}]},
+
+    {"name": "spring-boot", "commands": ["mvn", "mvnw", "gradle", "gradlew", "java"],
+     "env": {"SERVER_PORT": "{port}", "SERVER_ADDRESS": "127.0.0.1"}},
+
+    {"name": "quarkus", "commands": ["quarkus"],
+     "env": {"QUARKUS_HTTP_PORT": "{port}", "QUARKUS_HTTP_HOST": "127.0.0.1"}},
+
+    {"name": "aspnet", "commands": ["dotnet"],
+     "env": {"ASPNETCORE_URLS": "http://127.0.0.1:{port}"}},
+
+    {"name": "hugo", "commands": ["hugo"],
+     "server": {"subcommands": ["server", "serve"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port", "-p"]},
+                {"flags": ["--bind", "127.0.0.1"], "unless": ["--bind"]}]},
+
+    {"name": "jekyll", "commands": ["jekyll"],
+     "server": {"subcommands": ["serve", "s", "server"]},
+     "inject": [{"flags": ["--port", "{port}"], "unless": ["--port", "-P"]},
+                {"flags": ["--host", "127.0.0.1"], "unless": ["--host", "-H"]}]}
+  ]
+}
