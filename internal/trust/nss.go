@@ -22,6 +22,7 @@ func nssDBs(home string) []string {
 		filepath.Join(home, "snap", "firefox", "common", ".mozilla", "firefox", "*"),
 		filepath.Join(home, ".var", "app", "org.mozilla.firefox", ".mozilla", "firefox", "*"),
 		filepath.Join(home, "Library", "Application Support", "Firefox", "Profiles", "*"),
+		filepath.Join(home, "AppData", "Roaming", "Mozilla", "Firefox", "Profiles", "*"),
 	} {
 		m, _ := filepath.Glob(pattern)
 		dirs = append(dirs, m...)
