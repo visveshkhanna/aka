@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,8 @@ import (
 func TestMain(m *testing.M) {
 	mode := os.Getenv("RUNNER_TEST_MODE")
 	if mode == "" {
+		// Set once, before any watcher goroutine can read them.
+		pollFast, pollSlow = 50*time.Millisecond, 100*time.Millisecond
 		os.Exit(m.Run())
 	}
 	addr := "127.0.0.1:0"
@@ -130,6 +133,9 @@ func TestAugmentPathAndLookPath(t *testing.T) {
 		}
 	}
 	tool := filepath.Join(root, "node_modules", ".bin", "mytool")
+	if runtime.GOOS == "windows" {
+		tool += ".exe" // Windows runs only files with a PATHEXT extension
+	}
 	os.WriteFile(tool, []byte("#!/bin/sh\n"), 0o755)
 
 	p := AugmentPath("/usr/bin", sub)
@@ -171,7 +177,6 @@ func newE2E(t *testing.T) *e2e {
 		t.Fatal(err)
 	}
 	t.Cleanup(s.Close)
-	pollFast, pollSlow = 50*time.Millisecond, 100*time.Millisecond
 	return &e2e{t: t, dir: dir, srv: s, proxy: s.ProxyPort()}
 }
 
@@ -186,8 +191,12 @@ func (e *e2e) start(host, mode string, viaShell bool, extra ...string) (<-chan r
 	exe, _ := os.Executable()
 	args := append([]string{exe}, extra...)
 	if viaShell {
-		// "; exit" keeps sh from exec-ing, so the app is a grandchild.
+		// Through a shell, so the app is a grandchild. "; exit" keeps sh
+		// from exec-ing it; cmd always runs it as a child of its own.
 		args = []string{"/bin/sh", "-c", strconv.Quote(exe) + "; exit $?"}
+		if runtime.GOOS == "windows" {
+			args = []string{"cmd", "/d", "/c", exe}
+		}
 	}
 	os.Setenv("RUNNER_TEST_MODE", mode)
 	e.t.Cleanup(func() { os.Unsetenv("RUNNER_TEST_MODE") })
@@ -257,8 +266,15 @@ func TestRunAppHonouringPORT(t *testing.T) {
 	if r.err != nil || r.code != 7 {
 		t.Fatalf("Run = %+v, want exit code 7", r)
 	}
-	if _, ok := e.srv.Lookup("honour.localhost"); ok {
-		t.Fatal("route not removed after the app exited")
+	// The daemon removes the route when Run's connection closes, which it
+	// handles on its own goroutine.
+	for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if _, ok := e.srv.Lookup("honour.localhost"); !ok {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("route not removed after the app exited")
+		}
 	}
 }
 
@@ -379,7 +395,17 @@ func TestRunRelativeCommandFromDir(t *testing.T) {
 	dir := t.TempDir()
 	exe, _ := os.Executable()
 	os.MkdirAll(filepath.Join(dir, "bin"), 0o755)
-	if err := os.Symlink(exe, filepath.Join(dir, "bin", "dev")); err != nil {
+	if runtime.GOOS == "windows" {
+		// Windows runs bin/dev as bin/dev.exe; copy, since symlinks need
+		// a privilege there.
+		b, err := os.ReadFile(exe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "bin", "dev.exe"), b, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	} else if err := os.Symlink(exe, filepath.Join(dir, "bin", "dev")); err != nil {
 		t.Fatal(err)
 	}
 	os.Setenv("RUNNER_TEST_MODE", "port")

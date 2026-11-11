@@ -117,6 +117,7 @@ func TestAsRoot(t *testing.T) {
 func TestNSSDiscoveryAndInstall(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // os.UserHomeDir on Windows
 	profile := filepath.Join(home, ".mozilla", "firefox", "abc.default")
 	legacy := filepath.Join(home, ".mozilla", "firefox", "old.default")
 	empty := filepath.Join(home, ".mozilla", "firefox", "empty")
