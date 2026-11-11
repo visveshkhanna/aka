@@ -33,6 +33,9 @@ const (
 	// EventEvicted is sent by the daemon to a session whose route was taken
 	// over by `aka --force` elsewhere.
 	EventEvicted = "evicted"
+	// EventStopped tells sessions the daemon was stopped on purpose, so
+	// they wait for a proxy to come back instead of starting one.
+	EventStopped = "stopped"
 )
 
 // Error codes.

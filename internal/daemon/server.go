@@ -52,8 +52,9 @@ type Server struct {
 	cfg Config
 	log *log.Logger
 
-	mu     sync.Mutex
-	routes map[string]*entry
+	mu      sync.Mutex
+	routes  map[string]*entry
+	closing bool // Close has begun: dropped sessions are not orphans
 
 	proxyLns  []net.Listener
 	ctlLn     net.Listener
@@ -262,8 +263,10 @@ func (s *Server) Close() {
 		s.httpSrv.Shutdown(ctx)
 		cancel()
 		s.mu.Lock()
+		s.closing = true
 		for _, e := range s.routes {
 			if e.sess != nil {
+				e.sess.send(Response{OK: true, Event: EventStopped})
 				e.sess.conn.Close()
 			}
 		}
@@ -477,9 +480,11 @@ func (s *Server) endSession(sess *session) {
 	if e, ok := s.routes[sess.host]; ok && e.sess == sess {
 		delete(s.routes, sess.host)
 		s.log.Printf("removed %s", sess.host)
-		if e.child.pid > 0 {
+		if e.child.pid > 0 && !s.closing {
 			// After a clean exit the child is already gone and this is a
-			// no-op; the start time guards against PID reuse.
+			// no-op; the start time guards against PID reuse. When the
+			// daemon itself is shutting down, the connection dropped on our
+			// side and its aka is alive: leave the app alone.
 			go killOrphans(s.log, sess.host, e.child)
 		}
 	}
