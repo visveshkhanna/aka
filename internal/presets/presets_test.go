@@ -306,3 +306,17 @@ func TestNormalize(t *testing.T) {
 		}
 	}
 }
+
+func TestArgv(t *testing.T) {
+	for in, want := range map[string][]string{
+		"npm run dev":                 {"npm", "run", "dev"},
+		`uvicorn "main:app" --reload`: {"uvicorn", "main:app", "--reload"},
+		"npm run build && npm start":  {"sh", "-c", "npm run build && npm start"},
+		"bundle exec puma -p $PORT":   {"sh", "-c", "bundle exec puma -p $PORT"},
+		"python -m worker > log.txt":  {"sh", "-c", "python -m worker > log.txt"},
+	} {
+		if got := Argv(in); !reflect.DeepEqual(got, want) {
+			t.Errorf("Argv(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

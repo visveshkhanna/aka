@@ -209,3 +209,14 @@ func equal(a, b []string) bool {
 	}
 	return true
 }
+
+// Argv turns a command line written as one string (aka.toml, a Procfile)
+// into arguments. A line the shell would treat as more than one command,
+// or that uses a comment, runs through sh -c; a simple one is split into
+// words with quotes honoured, so presets can see it.
+func Argv(line string) []string {
+	if unsafeToAppend(line) || strings.ContainsAny(line, "$`<>*?(){}") {
+		return []string{"sh", "-c", line}
+	}
+	return splitCommand(line)
+}
