@@ -53,6 +53,8 @@ func Main(args []string) int {
 		return cmdDoctor()
 	case "up":
 		return cmdUp(args[1:])
+	case "compose":
+		return cmdCompose(args[1:])
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -75,6 +77,7 @@ Usage:
   %[1]s <command...>               same, name inferred from the directory
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
   %[1]s up [app...]                run the apps listed in %[1]s.toml together
+  %[1]s compose [args...]          docker compose up, with <service>.<project>.localhost routes
   %[1]s list [--json]              show active routes
   %[1]s alias <name> <port>        route <name>.localhost to a port aka did not start
   %[1]s alias [rm <name>]          list or remove aliases
