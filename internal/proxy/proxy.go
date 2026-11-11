@@ -12,10 +12,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"aka/internal/brand"
+	"aka/internal/netx"
 )
 
 // Route maps a hostname to a local upstream port.
@@ -247,7 +247,7 @@ func (s *Server) proxyError(w http.ResponseWriter, r *http.Request, err error) {
 	rt := routeFrom(r)
 	host := NormalizeHost(r.Host)
 	s.Log.Printf("%s -> %d: %v", host, rt.Port, err)
-	if errors.Is(err, syscall.ECONNREFUSED) {
+	if netx.IsRefused(err) {
 		// Usually a reloader between workers (Django, uvicorn --reload,
 		// nodemon). Show the auto-refreshing page rather than a hard error;
 		// the route disappears on its own if the app really exited.

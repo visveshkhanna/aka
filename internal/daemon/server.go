@@ -14,11 +14,11 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"aka/internal/certs"
 	"aka/internal/lockfile"
+	"aka/internal/netx"
 	"aka/internal/ports"
 	"aka/internal/proxy"
 )
@@ -240,9 +240,9 @@ func (s *Server) listenHTTPS(port int) {
 
 func describeListenError(err error, port int) string {
 	switch {
-	case errors.Is(err, syscall.EACCES), errors.Is(err, syscall.EPERM):
+	case netx.IsPermission(err):
 		return "binding port " + strconv.Itoa(port) + " needs privileges"
-	case errors.Is(err, syscall.EADDRINUSE):
+	case netx.IsAddrInUse(err):
 		return "port " + strconv.Itoa(port) + " is in use by another program"
 	}
 	return err.Error()
