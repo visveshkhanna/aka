@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"aka/internal/brand"
+	"aka/internal/config"
 	"aka/internal/daemon"
 	"aka/internal/presets"
 	"aka/internal/project"
@@ -50,6 +51,8 @@ func Main(args []string) int {
 		return cmdAlias(args[1:])
 	case "doctor":
 		return cmdDoctor()
+	case "up":
+		return cmdUp(args[1:])
 	case "trust":
 		return cmdTrust()
 	case "untrust":
@@ -71,6 +74,7 @@ Usage:
   %[1]s <name> <command...>        run command, route <name>.localhost to it
   %[1]s <command...>               same, name inferred from the directory
   %[1]s <name> -- <command...>     explicit name (use {port} in the command for the port)
+  %[1]s up [app...]                run the apps listed in %[1]s.toml together
   %[1]s list [--json]              show active routes
   %[1]s alias <name> <port>        route <name>.localhost to a port aka did not start
   %[1]s alias [rm <name>]          list or remove aliases
@@ -153,6 +157,15 @@ func cmdRun(args []string) int {
 	}
 	dir := cwd
 	command := ra.Command
+	if len(command) == 0 && ra.Name == "" {
+		if p := config.Find(cwd); p != "" {
+			f, err := config.Load(p)
+			if err != nil {
+				return fail(err)
+			}
+			return up(f, nil) // the project file says what to run
+		}
+	}
 	if len(command) == 0 {
 		if dir, command, err = devCommand(cwd, ra.Choose); err != nil {
 			return fail(err)
