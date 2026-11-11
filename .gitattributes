@@ -1,0 +1,5 @@
+# Normalize line endings: scripts break with CRLF, even on Windows checkouts.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
