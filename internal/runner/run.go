@@ -196,6 +196,7 @@ loop:
 	<-watchDone
 	sess.close()
 	w.reapLeftovers()
+	releaseGroup(pgid)
 	out.finish()
 	return exitCode(exitErr), nil
 }

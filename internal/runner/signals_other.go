@@ -1,4 +1,4 @@
-//go:build !unix
+//go:build !unix && !windows
 
 package runner
 
@@ -16,6 +16,7 @@ var (
 func isolate(*exec.Cmd)                  {}
 func childGroup(int) int                 { return 0 }
 func signalGroup(int, os.Signal)         {}
+func releaseGroup(int)                   {}
 func signalExitCode(*exec.ExitError) int { return 0 }
 
 func notifySignals() chan os.Signal {

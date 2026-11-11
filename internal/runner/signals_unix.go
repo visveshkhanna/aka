@@ -58,3 +58,6 @@ func signalExitCode(ee *exec.ExitError) int {
 	}
 	return 0
 }
+
+// releaseGroup is a no-op on Unix: a process group needs no handle.
+func releaseGroup(int) {}
