@@ -389,3 +389,26 @@ func TestRunRelativeCommandFromDir(t *testing.T) {
 		t.Fatalf("Run = %+v", r)
 	}
 }
+
+// Stopping the daemon on purpose must not be undone by a running app: the
+// app keeps running unrouted and re-registers once a proxy starts again.
+func TestProxyStopIsNotUndoneByRunningApp(t *testing.T) {
+	e := newE2E(t)
+	ch, _ := e.start("stay.localhost", "port", false)
+	e.waitReady("stay.localhost")
+	e.srv.Close()
+	time.Sleep(600 * time.Millisecond) // longer than the crash-reconnect delay
+	if _, err := daemon.Ping(e.dir); err == nil {
+		t.Fatal("the app restarted a proxy that was stopped on purpose")
+	}
+	s, err := daemon.Start(daemon.Config{StateDir: e.dir, ProxyHosts: []string{"127.0.0.1"}, Log: log.New(io.Discard, "", 0)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+	e.srv, e.proxy = s, s.ProxyPort()
+	e.waitReady("stay.localhost")
+	if r := e.quitAndWait("stay.localhost", ch); r.code != 7 {
+		t.Fatalf("Run = %+v", r)
+	}
+}

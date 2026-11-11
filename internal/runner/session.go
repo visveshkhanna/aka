@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"aka/internal/brand"
 	"aka/internal/daemon"
 )
 
@@ -36,6 +37,7 @@ type session struct {
 	port     int
 	dialHost string
 	closed   bool
+	waiting  bool            // the daemon was stopped on purpose; wait, do not start one
 	child    daemon.Request  // last OpChild, replayed on reconnect
 	evicted  chan int        // receives the evicting PID
 	ping     daemon.Response // from the daemon the session registered with
@@ -86,6 +88,12 @@ func (s *session) read(c *daemon.Conn) {
 		if err != nil {
 			break
 		}
+		if r.Event == daemon.EventStopped {
+			s.mu.Lock()
+			s.waiting = true
+			s.mu.Unlock()
+			break
+		}
 		if r.Event == daemon.EventEvicted {
 			s.mu.Lock()
 			s.closed = true
@@ -110,8 +118,19 @@ func (s *session) read(c *daemon.Conn) {
 	}
 }
 
+// reconnect re-registers after the connection drops. After a crash it
+// starts a new daemon at once. After a deliberate stop (`aka proxy stop`)
+// it only waits for one to appear, so stopping the proxy with apps running
+// is not undone behind the user's back; the app keeps running unrouted.
 func (s *session) reconnect() {
-	s.logf("lost connection to the proxy daemon; reconnecting")
+	s.mu.Lock()
+	waiting := s.waiting
+	s.mu.Unlock()
+	if waiting {
+		s.logf("the proxy was stopped; this app keeps running and is routed again when the proxy starts (`%s proxy start`)", brand.Name)
+	} else {
+		s.logf("lost connection to the proxy daemon; reconnecting")
+	}
 	delay := 200 * time.Millisecond
 	for {
 		s.mu.Lock()
@@ -119,6 +138,12 @@ func (s *session) reconnect() {
 		s.mu.Unlock()
 		if closed {
 			return
+		}
+		if waiting {
+			if _, err := daemon.Ping(s.start.StateDir); err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
 		}
 		err := s.open(prefer, false)
 		if err == nil {
@@ -131,6 +156,9 @@ func (s *session) reconnect() {
 			if port > 0 {
 				s.send(port, host)
 			}
+			s.mu.Lock()
+			s.waiting = false
+			s.mu.Unlock()
 			s.logf("reconnected to the proxy daemon")
 			return
 		}
