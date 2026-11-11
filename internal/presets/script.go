@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -212,11 +213,22 @@ func equal(a, b []string) bool {
 
 // Argv turns a command line written as one string (aka.toml, a Procfile)
 // into arguments. A line the shell would treat as more than one command,
-// or that uses a comment, runs through sh -c; a simple one is split into
-// words with quotes honoured, so presets can see it.
+// or that uses a comment, runs through the system shell (see Shell); a
+// simple one is split into words with quotes honoured, so presets can see
+// it.
 func Argv(line string) []string {
 	if unsafeToAppend(line) || strings.ContainsAny(line, "$`<>*?(){}") {
-		return []string{"sh", "-c", line}
+		return Shell(line)
 	}
 	return splitCommand(line)
+}
+
+// Shell is the command that runs line through the system shell: sh -c, or
+// cmd /c on Windows, which has no sh. cmd understands &&, | and >, but not
+// sh syntax such as $VAR (it uses %VAR%).
+func Shell(line string) []string {
+	if runtime.GOOS == "windows" {
+		return []string{"cmd", "/d", "/s", "/c", line}
+	}
+	return []string{"sh", "-c", line}
 }

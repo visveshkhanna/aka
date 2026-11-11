@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/visveshkhanna/aka/internal/presets"
 )
 
 // tree writes files (path -> content) under a new temp dir.
@@ -103,7 +105,7 @@ func TestDevCommands(t *testing.T) {
 		{"django", map[string]string{"manage.py": ""}, []string{"python", "manage.py", "runserver"}, 1},
 		{"django venv", map[string]string{"manage.py": "", ".venv/bin/python": ""}, []string{".venv/bin/python", "manage.py", "runserver"}, 1},
 		{"django windows venv", map[string]string{"manage.py": "", "venv/Scripts/python.exe": ""}, []string{filepath.Join("venv", "Scripts", "python.exe"), "manage.py", "runserver"}, 1},
-		{"procfile", map[string]string{"Procfile": "release: x\nweb: bundle exec puma -p $PORT\n"}, []string{"sh", "-c", "bundle exec puma -p $PORT"}, 1},
+		{"procfile", map[string]string{"Procfile": "release: x\nweb: bundle exec puma -p $PORT\n"}, presets.Shell("bundle exec puma -p $PORT"), 1},
 		{"rails bin/dev", map[string]string{"Gemfile": "", "bin/dev": "", "bin/rails": ""}, []string{"bin/dev"}, 1},
 		{"rails", map[string]string{"Gemfile": "", "bin/rails": ""}, []string{"bin/rails", "server"}, 1},
 		{"laravel", map[string]string{"artisan": "", "composer.json": "{}"}, []string{"php", "artisan", "serve"}, 1},

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/visveshkhanna/aka/internal/presets"
 )
 
 // Candidate is a command that probably starts the project's dev server.
@@ -66,9 +68,9 @@ func devCommands(d string, env Env) []Candidate {
 
 	// Procfile (Heroku, foreman): the web process.
 	if web := procfileWeb(filepath.Join(d, "Procfile.dev")); web != "" {
-		add("Procfile.dev web", "sh", "-c", web)
+		add("Procfile.dev web", presets.Shell(web)...)
 	} else if web := procfileWeb(filepath.Join(d, "Procfile")); web != "" {
-		add("Procfile web", "sh", "-c", web)
+		add("Procfile web", presets.Shell(web)...)
 	}
 
 	// Ruby on Rails.

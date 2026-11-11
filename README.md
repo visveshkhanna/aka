@@ -128,7 +128,7 @@ no_preset = false        # optional, like --no-preset
 each with its own URL (`web.localhost`, `api.localhost`), preset and
 detection, and their output prefixed by name. `aka up web api` runs some
 of them. Ctrl+C stops them all. A command that uses shell syntax
-(`a && b`, `$VAR`, `>`) runs through `sh -c`.
+(`a && b`, `$VAR`, `>`) runs through `sh -c`, or `cmd /c` on Windows.
 
 ## Docker Compose
 
