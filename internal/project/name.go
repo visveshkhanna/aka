@@ -95,20 +95,18 @@ var manifests = []manifest{
 func InferName(dir string) Name {
 	dir, _ = filepath.Abs(dir)
 	root := GitRoot(dir)
-	for d := dir; ; {
+	var found Name
+	walkUp(dir, root, func(d string) bool {
 		for _, m := range manifests {
 			if n := SanitizeLabel(m.read(d)); n != "" {
-				return Name{n, m.source}
+				found = Name{n, m.source}
+				return true
 			}
 		}
-		if d == root || root == "" {
-			break
-		}
-		parent := filepath.Dir(d)
-		if parent == d {
-			break
-		}
-		d = parent
+		return false
+	})
+	if found.Name != "" {
+		return found
 	}
 	if root != "" {
 		if n := SanitizeLabel(filepath.Base(root)); n != "" {
@@ -119,6 +117,24 @@ func InferName(dir string) Name {
 		return Name{n, "directory name"}
 	}
 	return Name{"app", "default"}
+}
+
+// walkUp calls fn on dir and its parents until fn returns true. It stops at
+// the repository root when there is one. Outside a repository it stops
+// below the home directory (so ~/package.json is never taken for the
+// project) or at the filesystem root.
+func walkUp(dir, gitRoot string, fn func(string) bool) {
+	home, _ := os.UserHomeDir()
+	for d := dir; ; {
+		if fn(d) || d == gitRoot {
+			return
+		}
+		parent := filepath.Dir(d)
+		if parent == d || gitRoot == "" && parent == home {
+			return
+		}
+		d = parent
+	}
 }
 
 // GitRoot returns the nearest directory at or above dir containing .git (a

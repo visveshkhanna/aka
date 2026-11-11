@@ -64,7 +64,9 @@ func TestInferNameWalksUpToRepoRootOnly(t *testing.T) {
 	if got := InferName(filepath.Join(root, "other/deep/dir")); got.Name != "other" || got.Source != "git root" {
 		t.Errorf("no manifest: got %+v", got)
 	}
-	if got := InferName(filepath.Join(root, "plain/My Project")); got.Name != "my-project" {
+	// Outside a repository the walk continues up (to below $HOME), so the
+	// top-level package.json is this project's.
+	if got := InferName(filepath.Join(root, "plain/My Project")); got.Name != "outside-repo" {
 		t.Errorf("plain dir: got %+v", got)
 	}
 }
@@ -180,5 +182,20 @@ func TestChoices(t *testing.T) {
 	}
 	if _, ok := c.Get("/q"); !ok {
 		t.Fatal("other entry lost")
+	}
+}
+
+func TestWalkUpWithoutRepoStopsBelowHome(t *testing.T) {
+	home := tree(t, map[string]string{"package.json": `{"name":"home-junk","scripts":{"dev":"x"}}`, "proj/manage.py": "", "proj/app/x.py": "", "bare/sub/f": ""})
+	t.Setenv("HOME", home)
+	dir, c := FindDevCommands(filepath.Join(home, "proj/app"), Env{LookPath: lookNone})
+	if dir != filepath.Join(home, "proj") || len(c) != 1 {
+		t.Errorf("no repo: got %s %v, want proj's manage.py", dir, c)
+	}
+	if _, c := FindDevCommands(filepath.Join(home, "bare/sub"), Env{LookPath: lookNone}); len(c) != 0 {
+		t.Errorf("walked into the home directory: %v", c)
+	}
+	if n := InferName(filepath.Join(home, "bare/sub")); n.Name != "sub" {
+		t.Errorf("name taken from ~/package.json: %+v", n)
 	}
 }

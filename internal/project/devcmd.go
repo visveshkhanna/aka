@@ -29,20 +29,15 @@ type Env struct {
 // (where the command must run) and the candidates there, best first.
 func FindDevCommands(dir string, env Env) (string, []Candidate) {
 	dir, _ = filepath.Abs(dir)
-	root := GitRoot(dir)
-	for d := dir; ; {
+	found, cands := dir, []Candidate(nil)
+	walkUp(dir, GitRoot(dir), func(d string) bool {
 		if c := devCommands(d, env); len(c) > 0 {
-			return d, c
+			found, cands = d, c
+			return true
 		}
-		if d == root || root == "" {
-			return dir, nil
-		}
-		parent := filepath.Dir(d)
-		if parent == d {
-			return dir, nil
-		}
-		d = parent
-	}
+		return false
+	})
+	return found, cands
 }
 
 func devCommands(d string, env Env) []Candidate {
