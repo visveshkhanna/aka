@@ -15,9 +15,9 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: build step 2 of 7.** HTTP and HTTPS with a local CA, macOS and
-> Linux. Presets, full name inference, Windows, `alias` and `doctor` are
-> still to come.
+> **Status: build step 3 of 7.** HTTP and HTTPS with a local CA, and
+> presets for common frameworks, on macOS and Linux. Full name inference,
+> Windows, `alias` and `doctor` are still to come.
 
 ## How it works
 
@@ -43,10 +43,49 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
    the daemon notices the dropped connection, removes the route, and stops
    the orphaned app.
 
-So apps that ignore `PORT` and bind a default port (Django 8000, Angular
-4200, uvicorn 8000) still get routed correctly. Two such apps with the same
-hardcoded port still collide; presets (build step 3) will fix that by
-injecting flags.
+Before spawning, **presets** add the flags or env vars that make common
+dev servers listen on P (see below). So two Django apps, or two Angular
+apps, run side by side instead of fighting over 8000 or 4200. Apps with no
+preset that ignore `PORT` are still found by detection.
+
+## Presets
+
+[`internal/presets/presets.json`](internal/presets/presets.json) maps
+commands to what sets their port:
+
+| Ecosystem | Commands | Added |
+|---|---|---|
+| Angular | `ng serve` | `--port P --host 127.0.0.1` |
+| Vite family | `vite`, `vitepress`, `astro dev`, `react-router dev`, `rsbuild dev` | `--port P [--strictPort] --host 127.0.0.1` |
+| Others (JS) | `wrangler dev`, `expo start`, `react-native start` | `--port P` + host flag |
+| Django | `manage.py runserver`, `django-admin runserver` | `127.0.0.1:P` |
+| uvicorn, FastAPI | `uvicorn app:app`, `fastapi dev` | `--port P --host 127.0.0.1` |
+| gunicorn | `gunicorn app:app` | `-b 127.0.0.1:P` |
+| Flask, Streamlit, Gradio | `flask run`, `streamlit run`, any python script | `FLASK_RUN_PORT`, `STREAMLIT_SERVER_PORT`, `GRADIO_SERVER_PORT` |
+| Jupyter, MkDocs, stdlib | `jupyter lab`, `mkdocs serve`, `python -m http.server` | `--port=P`, `-a 127.0.0.1:P`, `P --bind 127.0.0.1` |
+| Rails, Jekyll | `rails s`, `jekyll serve` | `-p P -b 127.0.0.1`, `--port P --host 127.0.0.1` |
+| PHP, Laravel | `php -S`, `php artisan serve` | `127.0.0.1:P`, `--port=P --host=127.0.0.1` |
+| Spring Boot, Quarkus, ASP.NET | `mvn`, `gradle(w)`, `java -jar`, `quarkus dev`, `dotnet run/watch` | `SERVER_PORT`, `QUARKUS_HTTP_PORT`, `ASPNETCORE_URLS` |
+| Hugo | `hugo server` | `--port P --bind 127.0.0.1` |
+
+Next.js, Nuxt, Express, Phoenix, Go, Rust, Deno and Bun apps read `PORT`
+and need nothing.
+
+The rules:
+- Wrappers are looked past first: `npx`, `bunx`, `pnpm exec/dlx`,
+  `yarn exec/dlx`, `npm exec`, `poetry/uv/pipenv/pdm/hatch/rye run`, `uvx`,
+  `pipx run`, `bundle exec`, `cross-env`, `python -m mod`,
+  `python script.py`, `php artisan`.
+- `npm|pnpm|yarn|bun run <script>` looks the script up in `package.json`
+  and forwards the flags (`npm run dev -- --port P`). Compound scripts
+  (`a && b`, `a & b`, `a | b`, a trailing comment) are left alone.
+- Only server subcommands get flags: never `vite build`, `ng test` or
+  `manage.py migrate`. A flag you already passed (`--port 5000`) is not
+  added again. Env vars you have set win over the preset's.
+- A `{port}` in the command, or `--no-preset`, turns presets off for that run.
+
+Add or override presets in `~/.aka/presets.json`, in the same format. A
+user preset replaces a built-in one with the same `name`.
 
 ## HTTPS
 
@@ -106,6 +145,7 @@ Flags (before the name):
   --name, -n <name>   app name (when it would be mistaken for a command)
   --force, -f         take over a name another aka is using
   --port-hint <port>  route to this port instead of detecting one
+  --no-preset         do not add port flags or env for known frameworks
 ```
 
 The first word is the app name if it is not a command on your PATH. Use
