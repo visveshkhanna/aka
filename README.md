@@ -16,9 +16,11 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: build step 4 of 7.** HTTP and HTTPS with a local CA, presets
-> for common frameworks, name and dev command inference, on macOS and Linux.
-> Windows, `alias` and `doctor` are still to come.
+> **Status: build step 5 of 7.** HTTP and HTTPS with a local CA, presets
+> for common frameworks, name and dev command inference. Verified on macOS
+> and Linux. Windows support is built and cross-compiled, but has not been
+> run on Windows yet (see [Windows](#windows)). `alias` and `doctor` are
+> still to come.
 
 ## How it works
 
@@ -163,6 +165,28 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 uvicorn/Starlette, Rails and Express (with `trust proxy`) read
 `X-Forwarded-Proto` themselves.
+
+## Windows
+
+Windows 10 1803 or later (for the Unix-socket control channel). What differs:
+
+- **Detection** reads the process table from a Toolhelp32 snapshot and
+  LISTEN sockets from `GetExtendedTcpTable`.
+- **Stopping apps:** Ctrl+C reaches the app directly, as without aka, since
+  it shares the console. aka puts the app in a job object, so a takeover, a
+  third Ctrl+C, or aka itself dying stops the whole tree.
+- **Trust:** the CA goes into the current user's Root store (no admin rights;
+  Windows asks you to confirm). `aka untrust` removes it.
+- **Port 443** needs no privileges on Windows, so URLs have no port unless
+  something else holds 443.
+- **Output** goes through pipes, not a pseudo-console, so some tools drop
+  colours.
+- **Name resolution:** browsers and curl resolve `*.localhost` themselves,
+  but the Windows resolver does not. So Node, Python and similar clients
+  calling `https://api.localhost` from code need a hosts-file entry.
+
+**Untested:** this code is cross-compiled, vetted and its parsers are
+unit-tested on macOS and Linux, but it has not yet been run on Windows.
 
 ## Usage
 
