@@ -4,6 +4,7 @@ Give any local dev server a stable named URL, whatever the language or
 framework. `aka` works out the port by itself.
 
 ```sh
+aka                                    # run this project's dev command
 aka myapp python manage.py runserver   # https://myapp.localhost:1355
 aka uvicorn main:app --reload          # name inferred from the directory
 aka ng serve                           # Angular, name from the directory
@@ -15,8 +16,8 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: build step 3 of 7.** HTTP and HTTPS with a local CA, and
-> presets for common frameworks, on macOS and Linux. Full name inference,
+> **Status: build step 4 of 7.** HTTP and HTTPS with a local CA, presets
+> for common frameworks, name and dev command inference, on macOS and Linux.
 > Windows, `alias` and `doctor` are still to come.
 
 ## How it works
@@ -47,6 +48,39 @@ Before spawning, **presets** add the flags or env vars that make common
 dev servers listen on P (see below). So two Django apps, or two Angular
 apps, run side by side instead of fighting over 8000 or 4200. Apps with no
 preset that ignore `PORT` are still found by detection.
+
+## Bare `aka` and app names
+
+With no command, `aka` looks for the project's dev command, from the current
+directory up to the repository root (or, outside a repository, up to just
+below your home directory), and runs it in the directory where it found it:
+
+| Found | Runs |
+|---|---|
+| `package.json` script `dev`, else `serve`, else `start` | `<pm> run <script>` (pm from `packageManager` or the lock file) |
+| `angular.json` without scripts | `npx ng serve` |
+| `manage.py` | `uv run python` / `poetry run python` / `.venv/bin/python` / `python3` `manage.py runserver` |
+| `Procfile.dev` or `Procfile` `web:` | that line, via `sh -c` |
+| `Gemfile` + `bin/dev` or `bin/rails` | `bin/dev` / `bin/rails server` |
+| `artisan` + `composer.json` | `php artisan serve` |
+| `mix.exs` with Phoenix | `mix phx.server` |
+| `pom.xml` / `build.gradle` with Spring Boot | `./mvnw spring-boot:run` / `./gradlew bootRun` |
+| `*.csproj` | `dotnet watch run` |
+| `hugo.toml`, `mkdocs.yml` | `hugo server`, `mkdocs serve` |
+| `Cargo.toml`, `go.mod` with `package main` | `cargo run`, `go run .` |
+| `Makefile` with `dev`, `run` or `serve` | `make dev` |
+
+If several match (say a Django backend with a `package.json` for assets),
+`aka` asks once in a terminal and remembers the answer in
+`~/.aka/projects.json`. Nothing is written into your repository. Use
+`aka --choose` to pick again. A non-interactive run takes the first one and
+lists the others.
+
+The app name comes from the same walk: the nearest of `package.json`
+(`@scope/` dropped), `pyproject.toml`, `Cargo.toml`, `go.mod` (last path
+segment, `/v2` dropped), `composer.json`, `pom.xml`, `settings.gradle`,
+`mix.exs`, `*.csproj` and `angular.json`. Failing those, it is the repository
+root's name, then the directory's.
 
 ## Presets
 
@@ -133,8 +167,9 @@ uvicorn/Starlette, Rails and Express (with `trust proxy`) read
 ## Usage
 
 ```
+aka                            run this project's dev command, name inferred
 aka <name> <command...>        run command, route <name>.localhost to it
-aka <command...>               same, name inferred from the directory
+aka <command...>               same, name inferred from the project
 aka <name> -- <command...>     explicit name
 aka list                       show active routes
 aka proxy start|stop|status    manage the proxy daemon
@@ -146,6 +181,7 @@ Flags (before the name):
   --force, -f         take over a name another aka is using
   --port-hint <port>  route to this port instead of detecting one
   --no-preset         do not add port flags or env for known frameworks
+  --choose            pick again which dev command a bare aka runs
 ```
 
 The first word is the app name if it is not a command on your PATH. Use
