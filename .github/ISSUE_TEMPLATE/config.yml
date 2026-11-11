@@ -1,1 +1,14 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/visveshkhanna/aka/discussions/new?category=q-a
+    about: Questions about using aka go in Discussions.
+  - name: Share an idea
+    url: https://github.com/visveshkhanna/aka/discussions/new?category=ideas
+    about: Discuss larger ideas before opening a feature request.
+  - name: Documentation
+    url: https://aka.visvesh.dev/docs
+    about: Guides, reference and troubleshooting.
+  - name: Report a security vulnerability
+    url: https://github.com/visveshkhanna/aka/security/advisories/new
+    about: Report it privately, as described in the security policy.

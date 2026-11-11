@@ -1,0 +1,44 @@
+name: Preset request
+description: A dev server that aka does not start on the right port
+labels: ["preset"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        aka gives each app a free port through `PORT`. Some dev servers ignore it, and a [preset](https://aka.visvesh.dev/docs/presets) adds the flag or variable they read instead. Tell us about one that needs it, or [add it yourself](https://github.com/visveshkhanna/aka/blob/main/CONTRIBUTING.md#adding-a-preset).
+
+  - type: input
+    id: tool
+    attributes:
+      label: Dev server
+      description: The framework or tool, with its version.
+      placeholder: Remix 2.15
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The command that starts the dev server.
+      placeholder: remix vite:dev
+    validations:
+      required: true
+
+  - type: textarea
+    id: port
+    attributes:
+      label: How it sets its port and host
+      description: The flags or environment variables it reads, ideally with a link to its docs.
+      placeholder: "--port <port> and --host <host>; see https://..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens with aka today
+      description: The output of `aka <name> <command>`, if you tried it.
+      render: text
+    validations:
+      required: false
