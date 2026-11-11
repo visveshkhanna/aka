@@ -1,0 +1,47 @@
+---
+title: Commands
+description: Every aka command.
+---
+
+```text
+aka                            run this project's dev command (or aka.toml's apps)
+aka <name> <command...>        run command, route <name>.localhost to it
+aka <command...>               same, name inferred from the project
+aka <name> -- <command...>     explicit name ({port} in the command is replaced)
+aka up [app...]                run the apps listed in aka.toml together
+aka compose [args...]          docker compose up, with <service>.<project>.localhost URLs
+aka list [--json]              show running apps and aliases
+aka alias <name> <port>        route <name>.localhost to a port aka did not start
+aka alias [rm <name>]          list or remove aliases
+aka proxy start|stop|status    manage the proxy
+sudo aka proxy start           also serve port 443 (root is dropped after binding)
+aka service install|uninstall|status   start the proxy at login
+aka trust | untrust            add or remove the local CA in the system trust store
+aka doctor                     check the setup and explain what is wrong
+aka mcp                        MCP server on stdio, for AI coding agents
+aka --version
+aka --help
+```
+
+| Command | Guide |
+|---|---|
+| `aka`, `aka <name> <command>` | [Running apps](/docs/running-apps) |
+| `aka up` | [Several apps](/docs/multiple-apps) |
+| `aka compose` | [Docker Compose](/docs/docker-compose) |
+| `aka list`, `aka alias` | [Aliases and list](/docs/aliases) |
+| `aka proxy`, `aka service` | [The proxy](/docs/proxy) |
+| `aka trust`, `aka untrust` | [HTTPS](/docs/https) |
+| `aka doctor` | [Troubleshooting](/docs/troubleshooting) |
+| `aka mcp` | [AI agents](/docs/ai-agents) |
+
+## Run flags
+
+Flags go before the name:
+
+| Flag | Meaning |
+|---|---|
+| `--name`, `-n <name>` | the app name |
+| `--force`, `-f` | take over a name another aka is using, and stop that app |
+| `--port-hint <port>` | route to this port instead of detecting one |
+| `--no-preset` | do not add port flags or variables for known frameworks |
+| `--choose` | pick again which dev command a bare `aka` runs |

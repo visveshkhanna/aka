@@ -1,0 +1,24 @@
+{
+  "title": "Docs",
+  "pages": [
+    "---Getting started---",
+    "index",
+    "installation",
+    "---Guides---",
+    "running-apps",
+    "multiple-apps",
+    "docker-compose",
+    "aliases",
+    "https",
+    "presets",
+    "proxy",
+    "ai-agents",
+    "troubleshooting",
+    "---Reference---",
+    "commands",
+    "configuration",
+    "platforms",
+    "how-it-works",
+    "changelog"
+  ]
+}

@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* Monochrome accents, like the rest of the site. */
+:root {
+  --color-fd-primary: oklch(0.205 0 0);
+}
+.dark {
+  --color-fd-primary: oklch(0.985 0 0);
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* A faint grid behind the home page hero. */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, var(--color-fd-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-fd-border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center top, black 20%, transparent 70%);
+}

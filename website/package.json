@@ -1,0 +1,35 @@
+{
+  "name": "aka-docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/sync.mjs && next dev",
+    "build": "node scripts/sync.mjs && next build",
+    "check-links": "node scripts/check-links.mjs",
+    "types:check": "node scripts/sync.mjs && next typegen && tsc --noEmit",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "cn": "^0.5.2",
+    "fumadocs-core": "16.18.4",
+    "fumadocs-mdx": "15.5.3",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.18.4",
+    "geist": "^1.9.2",
+    "lucide-react": "^1.70.0",
+    "next": "16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.160.0"
+  }
+}

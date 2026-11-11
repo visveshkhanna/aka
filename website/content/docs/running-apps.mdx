@@ -1,0 +1,74 @@
+---
+title: Running apps
+description: Give a dev server a name, let aka infer one, or run the project's dev command with a bare aka.
+---
+
+```bash
+aka myapp python manage.py runserver   # a name, then the command
+aka uvicorn main:app --reload          # the command only: the name is inferred
+aka api -- php -S 127.0.0.1:{port}     # an explicit name; {port} is replaced
+```
+
+The command runs with these variables:
+
+| Variable | Value |
+|---|---|
+| `PORT` | a free port from 4000 to 4999 |
+| `HOST` | `127.0.0.1` |
+| `AKA_URL` | the app's public URL, such as `https://myapp.localhost:1355` |
+
+When the command exits, the route goes away and aka exits with the command's status. Ctrl+C reaches the app as it would without aka.
+
+## Names and commands
+
+The first word is taken as the app name if it is not a command on your `PATH`. When an app is named like a command, use `--name` or `--`:
+
+```bash
+aka --name test npm run test:server
+aka test -- npm run test:server
+```
+
+Flags go before the name:
+
+| Flag | Meaning |
+|---|---|
+| `--name`, `-n <name>` | the app name |
+| `--force`, `-f` | take over a name another aka is using, and stop that app |
+| `--port-hint <port>` | route to this port instead of detecting one |
+| `--no-preset` | do not add port flags or variables for known frameworks |
+| `--choose` | pick again which dev command a bare `aka` runs |
+
+A name with dots is a subdomain: `aka api.shop npm start` serves `https://api.shop.localhost`. A name you give must be letters, digits and dashes.
+
+## Bare aka
+
+With no command, aka looks for the project's dev command from the current directory up to the repository root (outside a repository, up to just below your home directory), and runs it in the directory where it found it:
+
+| Found | Runs |
+|---|---|
+| `package.json` script `dev`, else `serve`, else `start` | `<pm> run <script>`, with the package manager from `packageManager` or the lock file |
+| `angular.json` without scripts | `npx ng serve` |
+| `manage.py` | `manage.py runserver` through `uv run`, `poetry run`, the project's `.venv` or `python3` |
+| `Procfile.dev` or `Procfile` with a `web:` line | that line, through the shell |
+| `Gemfile` with `bin/dev` or `bin/rails` | `bin/dev` or `bin/rails server` |
+| `artisan` with `composer.json` | `php artisan serve` |
+| `mix.exs` using Phoenix | `mix phx.server` |
+| `pom.xml` or `build.gradle` using Spring Boot | `./mvnw spring-boot:run` or `./gradlew bootRun` |
+| `*.csproj` | `dotnet watch run` |
+| `hugo.toml`, `mkdocs.yml` | `hugo server`, `mkdocs serve` |
+| `Cargo.toml`, `go.mod` with `package main` | `cargo run`, `go run .` |
+| `Makefile` with a `dev`, `run` or `serve` target | `make <target>` |
+
+If several match, such as a Django backend with a `package.json` for its assets, aka asks once in a terminal and remembers the answer in `~/.aka/projects.json`. Nothing is written into your repository. `aka --choose` asks again. A run without a terminal takes the first match and lists the others.
+
+If the project has an [`aka.toml`](/docs/multiple-apps), a bare `aka` runs its apps instead.
+
+## Inferred names
+
+An inferred name comes from the same walk up the directory tree: the nearest of `package.json` (without its `@scope/`), `pyproject.toml`, `Cargo.toml`, `go.mod` (the last path segment, without `/v2`), `composer.json`, `pom.xml`, `settings.gradle`, `mix.exs`, `*.csproj` and `angular.json`. Failing those, it is the repository's name, then the directory's. It is lowercased, and anything other than letters and digits becomes a dash.
+
+## Worktrees
+
+In a checkout made with `git worktree add`, on a branch other than `main` or `master`, the inferred name gets the branch's last segment as a prefix. `feature/login` in a worktree of `shop` becomes `login.shop.localhost`, so two checkouts of the same project run at once. The main checkout never gets a prefix, and names you give are used as given.
+
+`AKA_PREFIX=staging` sets the prefix yourself. `AKA_PREFIX=` (empty) turns it off.

@@ -1,0 +1,36 @@
+---
+title: AI agents
+description: Let coding agents find the URL of the app they work on.
+---
+
+`aka mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. A coding agent can use it to look up the URL of the app it is working on instead of guessing a port.
+
+## Set it up
+
+For Claude Code:
+
+```bash
+claude mcp add aka -- aka mcp
+```
+
+For other MCP clients, add it to the client's configuration:
+
+```json
+{ "mcpServers": { "aka": { "command": "aka", "args": ["mcp"] } } }
+```
+
+## Tools
+
+| Tool | What it does |
+|---|---|
+| `list_apps` | the running apps and aliases, with their URLs |
+| `get_url` | the URL of one app |
+| `add_alias` | route a name to a port |
+| `remove_alias` | remove an alias |
+| `doctor` | run the setup checks |
+
+The server does not start dev servers. Agents run `aka <name> <command>` in a shell.
+
+## Docs for agents
+
+These docs are also served as plain text: [`/llms.txt`](/llms.txt) lists every page, [`/llms-full.txt`](/llms-full.txt) has all of them in one file, and each page has a Markdown version (the copy button at the top of the page).

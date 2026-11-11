@@ -1,0 +1,16 @@
+// The docs site: a static export served by Workers static assets, with no
+// Worker code. Cloudflare Workers Builds runs `npm run build` and then
+// `npx wrangler deploy` from this directory on every push to main.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aka-docs",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "aka.visvesh.dev", "custom_domain": true }],
+  "workers_dev": true,
+  "preview_urls": true
+}

@@ -1,0 +1,26 @@
+---
+title: The proxy
+description: Start, stop and check the proxy, and start it at login.
+---
+
+The proxy starts by itself the first time an app runs. To manage it directly:
+
+```bash
+aka proxy start     # start it (with sudo: also bind port 443, then drop root)
+aka proxy status
+aka proxy stop
+```
+
+`aka proxy stop` stops routing, but running apps keep running. Each one says so, and registers again when a proxy starts, with `aka proxy start` or the next app. If the proxy crashes instead, apps restart it right away. A proxy left over from an older aka is replaced automatically when it has no routes.
+
+The proxy listens only on loopback (`127.0.0.1` and `::1`), so apps are not exposed to your network.
+
+## Start at login
+
+```bash
+aka service install    # a launchd agent (macOS), systemd user unit (Linux), or Run key (Windows)
+aka service status
+aka service uninstall
+```
+
+No administrator rights are needed. launchd and systemd restart the proxy if it crashes, but `aka proxy stop` holds until the next login. The service runs as you, so it cannot bind port 443 on macOS or Linux; use `sudo aka proxy start` for URLs without a port.

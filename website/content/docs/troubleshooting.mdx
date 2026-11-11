@@ -1,0 +1,56 @@
+---
+title: Troubleshooting
+description: aka doctor, framework host checks, and known limits.
+---
+
+## aka doctor
+
+Run `aka doctor` first when a URL does not load. It checks:
+
+- the state directory;
+- the proxy: running, current build, HTTPS mode, port 443, and reachability on both loopback addresses;
+- the certificate authority: constraints, expiry, system trust, and Firefox and other NSS databases;
+- `*.localhost` name resolution;
+- every route, through the proxy;
+- the current project: its name, its dev command and the preset aka would use.
+
+It says how to fix each problem, and exits with status 1 if a check fails.
+
+## The app rejects the host
+
+Some frameworks reject requests for hosts they do not know. When an app answers 400 or 403 for that reason, the aka running it prints the setting to change in the app's terminal. This covers:
+
+| Framework | Setting |
+|---|---|
+| Django | `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` |
+| Vite | `server.allowedHosts` |
+| webpack-dev-server | `allowedHosts` |
+| Rails | `config.hosts` |
+| ASP.NET | `AllowedHosts` |
+
+`aka doctor` reports the same.
+
+## Django POSTs fail with "Origin checking failed"
+
+Django builds CSRF origins from the scheme it sees, which is plain HTTP behind the proxy. Add this to the development settings:
+
+```python title="settings.py"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+```
+
+## The browser warns about the certificate
+
+Run `aka trust`, then restart a browser that was already open. On Linux, Firefox and Chrome use their own NSS databases, which aka updates only when `certutil` is installed (`libnss3-tools` or `nss-tools`). See [HTTPS](/docs/https#trusting-it).
+
+## The app is not found
+
+If the app listens on a port aka cannot detect, pass it: `aka --port-hint 8080 web ./server`. A server that serves HTTPS itself cannot be proxied; let aka handle TLS instead.
+
+## Known limits
+
+- `kill -9` on `aka up` itself, on macOS or Linux, leaves its apps running. Ctrl+C, closing the terminal and a plain `kill` stop them.
+- Ctrl+Z suspends aka but not the app.
+- Python `requests` and Java use their own CA bundles; point them at `~/.aka/ca.pem`.
+- On Windows, code that calls another app needs a hosts-file entry; see [Platforms](/docs/platforms#windows).
+
+Still stuck? [Open an issue](https://github.com/visveshkhanna/aka/issues/new/choose) with the output of `aka doctor`.

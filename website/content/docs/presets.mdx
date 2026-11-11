@@ -1,0 +1,62 @@
+---
+title: Presets
+description: How aka sets the port for dev servers that ignore PORT, and how to add your own.
+---
+
+Most dev servers read the `PORT` environment variable. Many popular ones do not, and listen on a fixed port such as 8000 or 4200. Before starting the command, aka adds the flag or variable that makes them listen on the assigned port instead, so several of them run at once.
+
+The built-in presets live in [`internal/presets/presets.json`](https://github.com/visveshkhanna/aka/blob/main/internal/presets/presets.json). `P` is the assigned port:
+
+| Ecosystem | Commands | Added |
+|---|---|---|
+| Angular | `ng serve` | `--port P --host 127.0.0.1` |
+| Vite family | `vite`, `vitepress`, `astro dev`, `react-router dev`, `rsbuild dev` | `--port P [--strictPort] --host 127.0.0.1` |
+| Other JavaScript | `wrangler dev`, `expo start`, `react-native start` | `--port P` and a host flag |
+| Django | `manage.py runserver`, `django-admin runserver` | `127.0.0.1:P` |
+| uvicorn, FastAPI | `uvicorn app:app`, `fastapi dev` | `--port P --host 127.0.0.1` |
+| gunicorn | `gunicorn app:app` | `-b 127.0.0.1:P` |
+| Flask, Streamlit, Gradio | `flask run`, `streamlit run`, any Python script | `FLASK_RUN_PORT`, `STREAMLIT_SERVER_PORT`, `GRADIO_SERVER_PORT` |
+| Jupyter, MkDocs, Python | `jupyter lab`, `mkdocs serve`, `python -m http.server` | `--port=P`, `-a 127.0.0.1:P`, `P --bind 127.0.0.1` |
+| Rails, Jekyll | `rails s`, `jekyll serve` | `-p P -b 127.0.0.1`, `--port P --host 127.0.0.1` |
+| PHP, Laravel | `php -S`, `php artisan serve` | `127.0.0.1:P`, `--port=P --host=127.0.0.1` |
+| Spring Boot, Quarkus, ASP.NET | `mvn`, `gradle`, `gradlew`, `java -jar`, `quarkus dev`, `dotnet run`, `dotnet watch` | `SERVER_PORT`, `QUARKUS_HTTP_PORT`, `ASPNETCORE_URLS` |
+| Hugo | `hugo server` | `--port P --bind 127.0.0.1` |
+
+Next.js, Nuxt, Express, Phoenix, Go, Rust, Deno and Bun apps read `PORT` and need nothing.
+
+## Rules
+
+- **Wrappers are looked through.** `npx`, `bunx`, `pnpm exec` and `dlx`, `yarn exec` and `dlx`, `npm exec`, `poetry`, `uv`, `pipenv`, `pdm`, `hatch` and `rye run`, `uvx`, `pipx run`, `bundle exec`, `cross-env`, `python -m <module>`, `python <script>` and `php artisan` are skipped to find the real command.
+- **Package scripts are followed.** `npm`, `pnpm`, `yarn` or `bun run <script>` looks the script up in `package.json` and forwards the flags (`npm run dev -- --port P`). Compound scripts (`a && b`, `a & b`, `a | b`, a trailing comment) are left alone.
+- **Only server commands get flags**: never `vite build`, `ng test` or `manage.py migrate`.
+- **Your settings win.** A flag you already passed (`--port 5000`) is not added again, and an environment variable you have set is not replaced.
+- **You can turn them off.** A `{port}` placeholder in the command, or `--no-preset`, disables presets for that run.
+
+Apps with no preset that ignore `PORT` still work: aka finds the port they listen on (see [How it works](/docs/how-it-works)).
+
+## Your own presets
+
+Add or override presets in `~/.aka/presets.json`, in the same format as the built-in file. A preset with the same `name` as a built-in one replaces it.
+
+```json
+{
+  "presets": [
+    {
+      "name": "mytool",
+      "commands": ["mytool"],
+      "server": { "subcommands": ["serve"] },
+      "inject": [{ "flags": ["--listen", "127.0.0.1:{port}"], "unless": ["--listen"] }],
+      "env": { "MYTOOL_ENV": "development" }
+    }
+  ],
+  "wrappers": [{ "commands": ["mise"], "subcommands": ["exec"] }]
+}
+```
+
+- `commands` are matched by name, ignoring the directory and a Windows extension, so `ng`, `./node_modules/.bin/ng` and `ng.cmd` are the same command.
+- `server.subcommands` adds the flags only for those subcommands (`mytool serve`, not `mytool build`).
+- `inject` adds `flags`, unless one of the `unless` flags is already there. `{port}` is replaced with the assigned port.
+- `env` sets variables for every run of the command, with the same `{port}` substitution.
+- `wrappers` adds commands to look through, such as a version manager.
+
+If you write a preset for a common tool, consider contributing it to the built-in file.

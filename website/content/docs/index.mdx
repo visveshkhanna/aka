@@ -1,0 +1,55 @@
+---
+title: Introduction
+description: Stable, named .localhost URLs for every local dev server, in any language or framework.
+---
+
+aka runs a small reverse proxy on your machine and gives each dev server a name. Your app gets a free port, and you open `https://<name>.localhost` instead of remembering which port it took.
+
+```diff
+- python manage.py runserver          # http://127.0.0.1:8000
++ aka python manage.py runserver      # https://myapp.localhost:1355
+```
+
+The URL stays the same across restarts, so bookmarks, cookies, OAuth redirects and test scripts keep pointing at the right app. Two Django or two Angular projects run side by side instead of fighting over 8000 or 4200.
+
+aka is a single static binary with no runtime dependencies. It works with any stack: Node, Python, Ruby, PHP, Go, Rust, Java, .NET, Elixir and more.
+
+## Quick start
+
+[Install aka](/docs/installation), then trust its local certificate authority once, so browsers accept the HTTPS URLs:
+
+```bash
+aka trust
+```
+
+From a project directory, run aka with no arguments. It finds the dev command (`package.json` scripts, `manage.py`, a `Procfile`, `bin/dev` and [more](/docs/running-apps#bare-aka)) and runs it:
+
+```bash
+aka
+# -> https://<project>.localhost:1355
+```
+
+Or give a name and any command:
+
+```bash
+aka myapp npm run dev                 # https://myapp.localhost:1355
+aka api uvicorn main:app --reload     # https://api.localhost:1355
+aka ng serve                          # name inferred from the project
+```
+
+URLs carry `:1355` until the proxy can bind port 443. Start it once with `sudo` to drop the port; aka binds 443, then gives up root:
+
+```bash
+sudo aka proxy start                  # https://myapp.localhost
+```
+
+## How it works
+
+Each app gets a free port from 4000 to 4999 through the `PORT` environment variable. Most frameworks read it. For those that don't, such as Vite, Angular, Django, uvicorn and Rails, aka adds the matching flag or variable. Apps that ignore both are still found: aka watches the process tree for listening sockets and the output for printed URLs, and routes to the port the app actually uses.
+
+<Cards>
+  <Card title="Running apps" href="/docs/running-apps" description="Names, flags, bare aka and worktrees." />
+  <Card title="Several apps" href="/docs/multiple-apps" description="Run a whole project with aka.toml and aka up." />
+  <Card title="HTTPS" href="/docs/https" description="The local certificate authority and port 443." />
+  <Card title="How it works" href="/docs/how-it-works" description="The proxy, port detection and process handling." />
+</Cards>

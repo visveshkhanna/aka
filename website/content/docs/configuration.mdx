@@ -1,0 +1,55 @@
+---
+title: Configuration
+description: aka.toml, environment variables, and the files aka keeps.
+---
+
+## aka.toml
+
+An optional `aka.toml` lists the apps of a project for [`aka up`](/docs/multiple-apps). aka looks for it from the current directory up to the repository root.
+
+```toml title="aka.toml"
+[apps]
+web = "npm run dev"            # a name and a command
+
+[apps.api]                     # or a table, for more settings
+cmd = "uvicorn main:app --reload"
+dir = "services/api"
+port_hint = 8000
+no_preset = false
+```
+
+| Setting | Type | Meaning |
+|---|---|---|
+| `cmd` (or `command`) | string | the command; required |
+| `dir` | string | where to run it, relative to `aka.toml`; default the file's directory |
+| `port_hint` | integer | route to this port, like `--port-hint` |
+| `no_preset` | boolean | do not apply presets, like `--no-preset` |
+
+The file accepts strings (double or single quoted), integers, booleans, tables and comments. Anything else, an unknown setting, or a key set twice is an error with its line number, so a typo never silently drops an app.
+
+## Environment variables
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `AKA_PROXY_PORT` | `1355` | the proxy's port, for HTTP and HTTPS |
+| `AKA_HTTPS_PORT` | `443` | the dedicated HTTPS port to try; `0` for none |
+| `AKA_HTTPS` | on | `0` serves plain HTTP only |
+| `AKA_PREFIX` | from the branch | the [worktree](/docs/running-apps#worktrees) prefix; empty turns it off |
+| `AKA_STATE_DIR` | `~/.aka` | where aka keeps its files |
+| `AKA_NO_PTY` | off | `1` captures app output through pipes instead of a pseudo-terminal |
+
+aka sets `PORT`, `HOST`, `AKA_URL` and `AKA_PORT` for the app, `NODE_EXTRA_CA_CERTS` when HTTPS is on, and `PYTHONUNBUFFERED` when output goes through pipes.
+
+## Files
+
+Everything aka keeps is in `~/.aka`, or `AKA_STATE_DIR`:
+
+| File | Contents |
+|---|---|
+| `ca.pem`, `ca-key.pem` | the local certificate authority |
+| `aliases.json` | [aliases](/docs/aliases) |
+| `projects.json` | which dev command a bare `aka` runs, per project |
+| `presets.json` | your own [presets](/docs/presets#your-own-presets) (optional) |
+| `daemon.log` | the proxy's log |
+
+Nothing is written into your projects.

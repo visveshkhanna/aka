@@ -1,0 +1,24 @@
+---
+title: Aliases and list
+description: Route a name to a port aka did not start, and list what is running.
+---
+
+An alias routes a name to a port aka did not start, such as a database UI or a server started by another tool:
+
+```bash
+aka alias db 5432             # https://db.localhost -> 127.0.0.1:5432
+aka alias api 127.0.0.1:8080  # or a loopback address
+aka alias                     # list aliases
+aka alias rm db
+```
+
+Aliases are saved in `~/.aka/aliases.json` and come back when the proxy restarts. A running app cannot take an alias's name, even with `--force`.
+
+## List
+
+```bash
+aka list          # running apps and aliases
+aka list --json   # for scripts
+```
+
+`aka list --json` prints an array with each route's `url`, `hostname`, `port`, `pid`, `command`, whether it is an `alias`, and when it started (`since`).

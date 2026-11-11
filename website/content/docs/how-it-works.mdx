@@ -1,0 +1,50 @@
+---
+title: How it works
+description: The proxy, port detection, stopping apps and where aka keeps its state.
+---
+
+## The proxy
+
+A background proxy starts on first use. It listens on `127.0.0.1:1355` and `[::1]:1355`, routes each request by its `Host` header, and speaks both HTTP and HTTPS on that port. If it may bind port 443, it serves HTTPS there too. `*.localhost` names resolve to loopback without any DNS setup ([RFC 6761](https://www.rfc-editor.org/rfc/rfc6761)), in browsers, curl and most resolvers.
+
+The proxy never listens on other network interfaces, so apps are not exposed to the local network. A request for an unknown name gets a page listing the running apps, and a request for an app that is still starting gets a page that reloads once it is up.
+
+Each `aka` talks to the proxy over a local socket in `~/.aka`, and every route belongs to the connection that registered it. When that connection drops, because the app exited or aka was killed, the route goes away.
+
+## Running an app
+
+For `aka <name> <command>`, aka:
+
+1. registers `<name>.localhost` with the proxy, and picks a free port P from 4000 to 4999;
+2. applies a [preset](/docs/presets) if the command is a known dev server that ignores `PORT`;
+3. runs the command with `PORT=P`, `HOST=127.0.0.1` and `AKA_URL=https://<name>.localhost[:1355]`, replacing any `{port}` in its arguments with P.
+
+## Finding the port
+
+While the command runs, aka watches its whole process tree for TCP sockets in the LISTEN state (`lsof` on macOS, `/proc` on Linux, `GetExtendedTcpTable` on Windows), and scans its output for URLs such as `http://localhost:8000`. The route points at:
+
+1. P, if the app listens on it;
+2. otherwise the port of a printed URL, if the app listens on it;
+3. otherwise the first listening port that answers HTTP.
+
+This runs for the life of the app, so when it restarts or moves to another port, the route follows. `--port-hint` skips detection.
+
+## Stopping
+
+When the command exits, aka removes the route and exits with the command's status. Ctrl+C reaches the app as it would without aka. The app runs in its own process group (a job object on Windows), so aka can stop the whole tree, including anything the app started, and only processes it started: each is tracked by its process ID and start time, so a reused ID is never signalled.
+
+If aka itself is killed, the proxy notices the dropped connection, removes the route, and stops the app that was left behind.
+
+## State
+
+Everything aka keeps is in `~/.aka` (or `AKA_STATE_DIR`):
+
+| File | Contents |
+|---|---|
+| `ca.pem`, `ca-key.pem` | the local certificate authority |
+| `aliases.json` | aliases |
+| `projects.json` | which dev command a bare `aka` runs, per project |
+| `presets.json` | your own presets (optional) |
+| `daemon.log` | the proxy's log |
+
+Nothing is written into your projects.

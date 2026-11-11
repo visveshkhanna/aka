@@ -1,0 +1,83 @@
+---
+title: Installation
+description: Install aka on macOS, Linux or Windows.
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<Tabs items={['macOS and Linux', 'Windows', 'Go', 'From source']}>
+  <Tab value="macOS and Linux">
+
+```bash
+curl -fsSL https://aka.visvesh.dev/install.sh | sh
+```
+
+The script downloads the latest [release](https://github.com/visveshkhanna/aka/releases) for your machine, checks its SHA-256 checksum, and installs `aka` into `~/.local/bin`. Set `AKA_INSTALL_DIR` to choose another directory, or `AKA_VERSION` to pin a version:
+
+```bash
+curl -fsSL https://aka.visvesh.dev/install.sh | AKA_VERSION=v0.1.1 sh
+```
+
+The same script is in the repository, at `https://raw.githubusercontent.com/visveshkhanna/aka/main/install.sh`.
+
+  </Tab>
+  <Tab value="Windows">
+
+Download `aka_<version>_windows_amd64.zip`, or `arm64`, from the [latest release](https://github.com/visveshkhanna/aka/releases/latest), extract it, and put `aka.exe` in a directory on your `PATH`. aka needs Windows 10 1803 or later.
+
+  </Tab>
+  <Tab value="Go">
+
+With Go 1.26 or later, on any platform:
+
+```bash
+go install github.com/visveshkhanna/aka/cmd/aka@latest
+```
+
+  </Tab>
+  <Tab value="From source">
+
+```bash
+git clone https://github.com/visveshkhanna/aka
+cd aka
+go build -o bin/aka ./cmd/aka
+```
+
+  </Tab>
+</Tabs>
+
+## Set up HTTPS
+
+aka serves every app over HTTPS from a local certificate authority. Trust it once, so browsers accept the certificates:
+
+```bash
+aka trust
+```
+
+macOS and Windows ask you to confirm; Linux runs `sudo`. The CA can only sign `.localhost` and loopback names, so it cannot be used to impersonate other sites. See [HTTPS](/docs/https).
+
+## Check the setup
+
+```bash
+aka doctor
+```
+
+`doctor` checks the proxy, the certificate authority, name resolution and every route, and says how to fix anything that is wrong.
+
+## Verify a download
+
+Every release lists its archives in `checksums.txt`, and each archive has a build provenance attestation from the release workflow:
+
+```bash
+gh attestation verify aka_0.1.1_linux_amd64.tar.gz --repo visveshkhanna/aka
+```
+
+## Uninstall
+
+```bash
+aka service uninstall   # if you installed the login service
+aka proxy stop
+aka untrust             # remove the CA from the trust store
+rm -rf ~/.aka           # the CA, aliases and logs
+rm "$(command -v aka)"
+```

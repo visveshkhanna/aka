@@ -1,0 +1,14 @@
+---
+title: Docker Compose
+description: Give every published Compose service a .localhost URL.
+---
+
+```bash
+aka compose                         # docker compose up, plus a URL per published service
+aka compose -f dev.yml up --build   # arguments go to docker compose
+aka compose up -d                   # containers in the background; aka routes until Ctrl+C
+```
+
+Every running service with a published TCP port gets `<service>.<project>.localhost`, for example `web.shop.localhost` for the published port of `web` in the `shop` project. With several published ports, the first that answers HTTP is used.
+
+Routes follow services as they start and stop. With `-d`, the containers keep running after aka exits, and only the routes go away.
