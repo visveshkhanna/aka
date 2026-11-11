@@ -21,8 +21,13 @@ TypeScript sources (packages/portless/src):
     <TOOL>_URL variable), prepending node_modules/.bin to PATH, running the
     child in its own session and forwarding signals to its process group
     (from cli.ts and cli-utils.ts spawnCommand / killTree).
+  - internal/trust: the per-distro Linux CA anchor directories and update
+    commands, and the macOS `security add-trusted-cert` / removal
+    invocations (from certs.ts trustCA / untrustCA).
   - Test cases in internal/proxy and internal/detect port edge cases from
     proxy.test.ts and cli-utils.test.ts.
 
-Listener detection, stdout URL scanning, the daemon protocol and the
-connection-scoped route ownership are new in this project.
+Listener detection, stdout URL scanning, the daemon protocol, the
+connection-scoped route ownership, the name-constrained CA with in-process
+certificate issuance, HTTP/HTTPS sharing one port, and the sudo privilege
+drop are new in this project.
