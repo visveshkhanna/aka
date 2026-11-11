@@ -146,7 +146,7 @@ func Load(userFile string) (*Set, error) {
 	}
 	for i := range f.Wrappers {
 		for _, c := range f.Wrappers[i].Commands {
-			s.wrappers[c] = &f.Wrappers[i]
+			s.wrappers[normalize(c)] = &f.Wrappers[i]
 		}
 	}
 	user := map[string]bool{}
@@ -176,7 +176,7 @@ func parse(b []byte) (*Set, error) {
 	s := &Set{wrappers: map[string]*Wrapper{}, presets: f.Presets}
 	for i := range f.Wrappers {
 		for _, c := range f.Wrappers[i].Commands {
-			s.wrappers[c] = &f.Wrappers[i]
+			s.wrappers[normalize(c)] = &f.Wrappers[i]
 		}
 	}
 	return s, nil
@@ -271,10 +271,22 @@ func envFor(pre *Preset, port string, getenv func(string) string) []string {
 	return env
 }
 
+// containsCommand reports whether a preset's command list names cmd, an
+// already normalized command name. The list is normalized the same way, so
+// "ng.cmd" or `C:\tools\ng.exe` in a presets file matches a typed "ng".
+func containsCommand(list []string, cmd string) bool {
+	for _, c := range list {
+		if normalize(c) == cmd {
+			return true
+		}
+	}
+	return false
+}
+
 // match finds the preset for the unwrapped command.
 func (s *Set) match(inv invocation) *Preset {
 	for i := range s.presets {
-		if contains(s.presets[i].Commands, inv.name) {
+		if containsCommand(s.presets[i].Commands, inv.name) {
 			return &s.presets[i]
 		}
 	}

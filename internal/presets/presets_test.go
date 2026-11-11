@@ -273,7 +273,8 @@ func TestUserPresetsOverride(t *testing.T) {
 		"presets": [
 			{"name": "angular", "commands": ["ng"], "server": {"subcommands": ["serve"]},
 			 "inject": [{"flags": ["--port", "{port}"], "unless": ["--port"]}]},
-			{"name": "mytool", "commands": ["mytool"], "inject": [{"flags": ["--listen", ":{port}"]}]}
+			{"name": "mytool", "commands": ["mytool"], "inject": [{"flags": ["--listen", ":{port}"]}]},
+			{"name": "wintool", "commands": ["wintool.exe"], "inject": [{"flags": ["-p", "{port}"]}]}
 		]}`), 0o644)
 	s, err := Load(f)
 	if err != nil {
@@ -283,6 +284,9 @@ func TestUserPresetsOverride(t *testing.T) {
 		"ng serve":         "ng serve --port 4123",
 		"mise exec mytool": "mise exec mytool --listen :4123",
 		"vite":             "vite --port 4123 --strictPort --host 127.0.0.1",
+		// A command listed with its Windows extension matches without it.
+		"wintool":                  "wintool -p 4123",
+		`C:\bin\wintool.exe serve`: `C:\bin\wintool.exe serve -p 4123`,
 	} {
 		if r := s.Apply(split(in), port, t.TempDir(), noEnv); strings.Join(r.Args, " ") != want {
 			t.Errorf("%s: got %q, want %q", in, strings.Join(r.Args, " "), want)
