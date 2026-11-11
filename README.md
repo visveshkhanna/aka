@@ -16,11 +16,13 @@ sudo aka proxy start                   # once: URLs without a port, https://myap
 `~/.aka` state dir, default port) are constants in
 [`internal/brand/brand.go`](internal/brand/brand.go).
 
-> **Status: build step 6 of 7.** HTTP and HTTPS with a local CA, presets
-> for common frameworks, name and dev command inference, `alias`, `doctor`
-> and worktree names. Verified on macOS and Linux. Windows support is built
-> and cross-compiled, but has not been run on Windows yet (see
-> [Windows](#windows)).
+> **Status: all 7 build steps done.** This covers:
+> - HTTP and HTTPS with a local CA, and presets for common frameworks;
+> - name and dev command inference, `alias`, `doctor` and worktree names;
+> - `aka.toml` with `aka up`, Docker Compose, an MCP server and a login service.
+>
+> Verified on macOS and Linux. Windows support is built and cross-compiled,
+> but has not been run on Windows yet (see [Windows](#windows)).
 
 ## How it works
 
@@ -83,6 +85,64 @@ The app name comes from the same walk: the nearest of `package.json`
 segment, `/v2` dropped), `composer.json`, `pom.xml`, `settings.gradle`,
 `mix.exs`, `*.csproj` and `angular.json`. Failing those, it is the repository
 root's name, then the directory's.
+
+## Several apps: `aka.toml` and `aka up`
+
+```toml
+# aka.toml, at the project root
+[apps]
+web = "npm run dev"
+api = "uvicorn main:app --reload"
+
+[apps.worker]            # a table for more settings
+cmd = "python -m worker"
+dir = "services/worker"  # relative to aka.toml
+port_hint = 9000         # optional, like --port-hint
+no_preset = false        # optional, like --no-preset
+```
+
+`aka up` (or a bare `aka` anywhere in the project) runs every app at once,
+each with its own URL (`web.localhost`, `api.localhost`), preset and
+detection, and their output prefixed by name. `aka up web api` runs some
+of them. Ctrl+C stops them all. A command that uses shell syntax
+(`a && b`, `$VAR`, `>`) runs through `sh -c`.
+
+## Docker Compose
+
+```sh
+aka compose            # docker compose up, plus a URL per published service
+aka compose -f dev.yml up --build
+aka compose up -d      # containers in the background; aka routes until Ctrl+C
+```
+
+Every running service with a published TCP port gets
+`<service>.<project>.localhost`, for example `web.shop.localhost` to the
+published port of `web`. With several ports, the first one that answers
+HTTP is used. Routes follow services as they start and stop.
+
+## AI coding agents (MCP)
+
+`aka mcp` is a Model Context Protocol server on stdio. It lets an agent find
+the URL of the app it is working on instead of guessing a port:
+
+```sh
+claude mcp add aka -- aka mcp
+```
+
+Tools: `list_apps`, `get_url`, `add_alias`, `remove_alias`, `doctor`.
+
+## Start at login
+
+```sh
+aka service install    # launchd agent (macOS), systemd user unit (Linux), Run key (Windows)
+aka service status
+aka service uninstall
+```
+
+No administrator rights are needed. The service restarts the proxy only
+if it crashes, so `aka proxy stop` holds until the next login. It runs as
+you, so on macOS it serves HTTPS on 1355. For port 443 use
+`sudo aka proxy start` instead.
 
 ## Worktrees
 
@@ -236,7 +296,9 @@ unit-tested on macOS and Linux, but it has not yet been run on Windows.
 ## Usage
 
 ```
-aka                            run this project's dev command, name inferred
+aka                            run this project's dev command (or aka.toml's apps)
+aka up [app...]                run the apps listed in aka.toml together
+aka compose [args...]          docker compose up, with <service>.<project>.localhost URLs
 aka <name> <command...>        run command, route <name>.localhost to it
 aka <command...>               same, name inferred from the project
 aka <name> -- <command...>     explicit name
@@ -244,6 +306,8 @@ aka list [--json]              show active routes and aliases
 aka alias <name> <port>        route <name>.localhost to a port aka did not start
 aka alias [rm <name>]          list or remove aliases
 aka doctor                     check the setup and explain what is wrong
+aka mcp                        MCP server on stdio, for AI coding agents
+aka service install|uninstall|status   start the proxy at login
 aka proxy start|stop|status    manage the proxy daemon
 sudo aka proxy start           also serve port 443 (root is dropped after binding)
 aka trust | untrust            add or remove the local CA in the system trust store
