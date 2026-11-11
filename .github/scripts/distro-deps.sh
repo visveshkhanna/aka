@@ -11,7 +11,7 @@ elif command -v dnf >/dev/null; then
 elif command -v apk >/dev/null; then
   apk add -q curl ca-certificates
 elif command -v pacman >/dev/null; then
-  pacman -Sy --noconfirm --needed curl ca-certificates >/dev/null
+  pacman -Syu --noconfirm --needed curl ca-certificates >/dev/null
 elif command -v zypper >/dev/null; then
   zypper -n -q in curl ca-certificates
 else
