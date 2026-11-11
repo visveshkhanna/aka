@@ -147,7 +147,7 @@ go test -race ./...
 go test -tags e2e ./e2e       # end-to-end, with real Node and Python servers
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the test setup, CI and releases.
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the checklist for pull requests, and how to add a preset. Please follow the [code of conduct](CODE_OF_CONDUCT.md), and report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## Credits
 
